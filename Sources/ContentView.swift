@@ -16,6 +16,8 @@ struct ContentView: View {
     @ObservedObject private var zoom = Zoom.shared
     @State private var showZoomHint = false
     @State private var zoomHintToken = 0
+    @State private var tabHint: String?
+    @State private var tabHintToken = 0
 
     init(doc: WriterDocument, fileURL: URL?) {
         self.doc = doc
@@ -64,6 +66,7 @@ struct ContentView: View {
             .overlay(alignment: .top) { topBar }
             .overlay(alignment: .top) { zenHint }
             .overlay(alignment: .top) { zoomHint }
+            .overlay(alignment: .top) { tabHintView }
             .overlay(alignment: .bottom) { errorToast }
             // The page changes width in one step when a panel opens or closes,
             // so the text re-wraps once (no flicker) and keeps its place.
@@ -156,6 +159,18 @@ struct ContentView: View {
                 withAnimation(.easeOut(duration: 0.5)) { showZoomHint = false }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: TabsModel.tabSwitched)) { note in
+            // In zen the tab strip is hidden: name the tab ⌃Tab landed on.
+            guard session.zen != nil, let window = session.textView?.window, note.object as? NSWindow === window,
+                  let tabs = window.tabGroup?.windows, let index = tabs.firstIndex(of: window) else { return }
+            tabHintToken += 1
+            let token = tabHintToken
+            withAnimation(.easeOut(duration: 0.15)) { tabHint = "\(TabInfo(window: window).title) · \(index + 1) of \(tabs.count)" }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                guard token == tabHintToken else { return }
+                withAnimation(.easeOut(duration: 0.5)) { tabHint = nil }
+            }
+        }
         .onChange(of: session.zen != nil) { _, inZen in
             withAnimation(.easeOut(duration: 0.3)) { showZenHint = inZen }
             if inZen {
@@ -190,6 +205,24 @@ struct ContentView: View {
         }
     }
 
+    /// The tab you switched to, shown briefly in zen (where the tab strip is hidden).
+    @ViewBuilder
+    private var tabHintView: some View {
+        if let tabHint {
+            Text(tabHint)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(Color.panel))
+                .overlay(Capsule().strokeBorder(Color.hairline))
+                .padding(.top, 18)
+                .transition(.opacity)
+                .allowsHitTesting(false)
+        }
+    }
+
     /// A brief "how to leave" note when zen starts, then nothing.
     @ViewBuilder
     private var zenHint: some View {
@@ -216,9 +249,12 @@ struct ContentView: View {
     private var topBar: some View {
         HStack(spacing: 12) {
             // The tabs take whatever room the status items on the right leave.
+            // In zen the tabs step aside; ⌃Tab and Show All Tabs still reach them.
             TabStrip(window: { session.textView?.window }, export: { session.exportCleanCopy() })
                 .padding(.leading, 66)  // clear of the window buttons
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .opacity(session.zen == nil ? 1 : 0)
+                .allowsHitTesting(session.zen == nil)
             HStack(spacing: 12) {
                 if let busy = session.busy {
                     HStack(spacing: 6) {

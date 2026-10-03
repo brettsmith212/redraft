@@ -1,8 +1,9 @@
 import AppKit
 
 /// Native window tabs: ⌘T opens a new document as a tab of the front window,
-/// and so does opening a file (⌘O); ⌘W (Close) closes the tab, and the window with its last tab. Redraft
-/// draws its own tab strip and Show All Tabs, so the system's are never shown.
+/// and so does opening a file (⌘O); ⌘W (Close) closes the tab, and the window
+/// with its last tab. Redraft draws its own tab strip and Show All Tabs, so
+/// the system's are never shown.
 @MainActor
 enum WindowTabs {
     #if DEBUG
@@ -154,6 +155,7 @@ enum WindowTabs {
             debugArrivedTabbed = pendingHost == nil && window.tabGroup === host.tabGroup
             #endif
             if pendingHost != nil { arrive(window, in: host) }
+            EditorSession.session(for: window)?.joinZen(of: host)
             window.makeKeyAndOrderFront(nil)
             TabsModel.shared.refresh()
             return
@@ -244,9 +246,61 @@ enum WindowTabs {
         }
     }
 
+    /// The system tab bar's place in the title bar, in full screen. macOS
+    /// keeps that area on screen, a grey band across the top (over Redraft's
+    /// own strip, or the page in zen), even with the bar itself hidden. Let
+    /// it hide with the rest of the title bar instead, and leave it out of
+    /// the title bar that drops down from the top of the screen. Windowed,
+    /// nothing changes.
+    static func collapseSystemTabBarInFullScreen(_ window: NSWindow) {
+        guard let tabBar = NSClassFromString("NSTabBar") else { return }
+        func holdsTabBar(_ view: NSView) -> Bool {
+            view.isKind(of: tabBar) || view.subviews.contains(where: holdsTabBar)
+        }
+        for accessory in window.titlebarAccessoryViewControllers where holdsTabBar(accessory.view) {
+            // Only when macOS has set it: changing the title bar while it
+            // animates (a tab switch in full screen) cancels the animation.
+            if accessory.fullScreenMinHeight > 0 { accessory.fullScreenMinHeight = 0 }
+            if !accessory.view.subviews.contains(where: { $0 is FullScreenTitleBar }) {
+                accessory.view.addSubview(FullScreenTitleBar(watching: accessory))
+            }
+        }
+    }
+
     static func showAllTabs() {
         guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
         EditorSession.session(for: window.sheetParent ?? window)?.showingTabs = true
+    }
+}
+
+/// Rides along in the system tab bar's place in the title bar and keeps
+/// that place out of sight in full screen: off the top of the screen, and
+/// out of the title bar that drops down from it (no empty row for tabs).
+private final class FullScreenTitleBar: NSView {
+    private weak var accessory: NSTitlebarAccessoryViewController?
+    private var minHeightWatch: NSKeyValueObservation?
+
+    init(watching accessory: NSTitlebarAccessoryViewController) {
+        self.accessory = accessory
+        super.init(frame: .zero)
+        // macOS sets this back now and then (a new tab, entering full
+        // screen); without it the band stays on screen.
+        minHeightWatch = accessory.observe(\.fullScreenMinHeight) { accessory, _ in
+            DispatchQueue.main.async {
+                if accessory.fullScreenMinHeight > 0 { accessory.fullScreenMinHeight = 0 }
+            }
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        // In full screen the title bar moves to a window of its own.
+        let inFullScreenTitleBar = window.map { NSStringFromClass(type(of: $0)).contains("FullScreen") } ?? false
+        if accessory?.isHidden != inFullScreenTitleBar { accessory?.isHidden = inFullScreenTitleBar }
     }
 }
 
@@ -254,7 +308,11 @@ enum WindowTabs {
 @MainActor
 final class TabsModel: ObservableObject {
     static let shared = TabsModel()
+    /// Posted with the window when another tab of the same window comes to
+    /// the front (not when you come back to the app or switch windows).
+    static let tabSwitched = Notification.Name("TabsModel.tabSwitched")
     @Published private(set) var tick = 0
+    private weak var lastKey: NSWindow?
     /// Per tab group: how far the tab strip is scrolled, so each tab's strip
     /// shows the same scroll.
     var stripScroll: [ObjectIdentifier: CGFloat] = [:]
@@ -262,9 +320,26 @@ final class TabsModel: ObservableObject {
 
     private init() {
         let center = NotificationCenter.default
+        center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { note in
+            MainActor.assumeIsolated {
+                guard let window = note.object as? NSWindow, window.windowController?.document != nil else { return }
+                let model = TabsModel.shared
+                if let last = model.lastKey, last !== window, let group = window.tabGroup, last.tabGroup === group {
+                    NotificationCenter.default.post(name: TabsModel.tabSwitched, object: window)
+                }
+                model.lastKey = window
+            }
+        }
         for name in [NSWindow.didBecomeKeyNotification, NSWindow.didBecomeMainNotification, NSWindow.didResignMainNotification] {
             center.addObserver(forName: name, object: nil, queue: .main) { _ in
                 MainActor.assumeIsolated { TabsModel.shared.refresh() }
+            }
+        }
+        // macOS rebuilds the title bar on the way into full screen.
+        center.addObserver(forName: NSWindow.willEnterFullScreenNotification, object: nil, queue: .main) { note in
+            MainActor.assumeIsolated {
+                guard let window = note.object as? NSWindow else { return }
+                (window.tabGroup?.windows ?? [window]).forEach(WindowTabs.collapseSystemTabBarInFullScreen)
             }
         }
         // A closing window is still listed until the close finishes.
@@ -275,6 +350,7 @@ final class TabsModel: ObservableObject {
 
     func refresh() {
         let documentWindows = NSApp.windows.filter { $0.windowController?.document != nil }
+        documentWindows.forEach(WindowTabs.collapseSystemTabBarInFullScreen)
         titleObservations = documentWindows.map { window in
             window.observe(\.title) { _, _ in
                 DispatchQueue.main.async { MainActor.assumeIsolated { TabsModel.shared.tick += 1 } }

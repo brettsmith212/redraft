@@ -266,6 +266,14 @@ enum DebugSnapshot {
                 }
             case "quit": NSApp.terminate(nil)
             case "newtab": WindowTabs.newTab()
+            case "nexttab": (NSApp.keyWindow ?? NSApp.mainWindow)?.selectNextTab(nil)
+            case "zenstate":
+                // zenstate <path> <label>: each tab's zen and full screen state.
+                var line = "\(parts[safe: 2] ?? ""):"
+                for w in NSApp.windows where w.windowController?.document != nil {
+                    line += " ['\(w.title)' zen=\(EditorSession.session(for: w)?.zen != nil) full=\(w.styleMask.contains(.fullScreen)) key=\(w.isKeyWindow) accessoriesHidden=\(w.titlebarAccessoryViewControllers.map(\.isHidden))]"
+                }
+                if let h = FileHandle(forWritingAtPath: parts[1]) { h.seekToEndOfFile(); h.write(Data((line + "\n").utf8)); try? h.close() }
             case "geom":
                 // geom <path> <label>: the page's frame, scroll and first line.
                 if let tv = session.textView, let lm = tv.layoutManager, let clip = tv.enclosingScrollView?.contentView {
