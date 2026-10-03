@@ -114,10 +114,10 @@ git push -q origin HEAD
 
 # 5. Install the official copy.
 pkill -x Redraft 2>/dev/null && sleep 1 || true
-mount=$(hdiutil attach -nobrowse -readonly "$dmg" | awk -F'\t' '/\/Volumes\//{print $NF}')
+mount=$(diskutil image attach --readOnly --nobrowse "$dmg" | awk -F'\t' '/\/Volumes\//{print $NF}')
 rm -rf /Applications/Redraft.app
 ditto "$mount/Redraft.app" /Applications/Redraft.app
-hdiutil detach -quiet "$mount"
+diskutil eject "$mount" >/dev/null
 spctl -a /Applications/Redraft.app
 open /Applications/Redraft.app
 
