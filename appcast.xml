@@ -6,6 +6,15 @@
     <description>Updates for Redraft. Written by `make release`; don't edit by hand.</description>
     <language>en</language>
     <item>
+      <title>Redraft 0.1.1</title>
+      <pubDate>Sat, 03 Oct 2026 15:50:32 GMT</pubDate>
+      <sparkle:version>2</sparkle:version>
+      <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Open files as tabs of the front window</li><li>Open files at the top the first time</li><li>Appcast: Redraft 0.1.0</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.1/Redraft-0.1.1.dmg" length="5860932" type="application/octet-stream" sparkle:edSignature="3XJBJViu5YlVkBo0gys+Am9rQk06Yuz+lvubMK4KPjUJEbQiDaHPW/7a7KadG54YAryPozwW0ck7EiEW9ZkPAw=="/>
+    </item>
+    <item>
       <title>Redraft 0.1.0</title>
       <pubDate>Sat, 03 Oct 2026 15:24:48 GMT</pubDate>
       <sparkle:version>1</sparkle:version>
