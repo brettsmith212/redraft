@@ -43,6 +43,14 @@ struct EditorView: NSViewRepresentable {
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
         scroll.scrollerStyle = .overlay
+        // The page keeps its own top margin under the title bar; an automatic
+        // inset as well would give the page two "tops" 32pt apart, and it
+        // would jump between them whenever a panel opens or closes.
+        scroll.automaticallyAdjustsContentInsets = false
+        scroll.contentInsets = NSEdgeInsets()
+        let clip = TopClipView()
+        clip.drawsBackground = false  // the page's paper shows through, as before
+        scroll.contentView = clip
         scroll.documentView = tv
         tv.trackReadingPosition()
 
@@ -63,6 +71,16 @@ struct EditorView: NSViewRepresentable {
         if let tv = scroll.documentView as? NSTextView, let lm = tv.layoutManager {
             tv.textStorage?.removeLayoutManager(lm)
         }
+    }
+}
+
+/// Keeps a page shorter than the window at the top, where AppKit would
+/// otherwise shift it a few points whenever the page is laid out again.
+private final class TopClipView: NSClipView {
+    override func constrainBoundsRect(_ proposedBounds: NSRect) -> NSRect {
+        var rect = super.constrainBoundsRect(proposedBounds)
+        if let page = documentView, page.frame.height <= rect.height { rect.origin.y = 0 }
+        return rect
     }
 }
 

@@ -266,6 +266,13 @@ enum DebugSnapshot {
                 }
             case "quit": NSApp.terminate(nil)
             case "newtab": WindowTabs.newTab()
+            case "geom":
+                // geom <path> <label>: the page's frame, scroll and first line.
+                if let tv = session.textView, let lm = tv.layoutManager, let clip = tv.enclosingScrollView?.contentView {
+                    let line = lm.numberOfGlyphs > 0 ? lm.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil) : .zero
+                    let text = "\(parts[safe: 2] ?? ""): frame=\(NSStringFromRect(tv.frame)) clip=\(NSStringFromRect(clip.bounds)) inset=\(NSStringFromSize(tv.textContainerInset)) line0=\(NSStringFromRect(line))\n"
+                    if let h = FileHandle(forWritingAtPath: parts[1]) { h.seekToEndOfFile(); h.write(Data(text.utf8)); try? h.close() }
+                }
             case "open":
                 // open <path>: what ⌘O does once a file is chosen.
                 NSDocumentController.shared.openDocument(withContentsOf: URL(fileURLWithPath: step.dropFirst(5).description), display: true) { _, _, _ in }
