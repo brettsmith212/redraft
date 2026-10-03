@@ -33,7 +33,8 @@ extension EditorSession {
     }
 
     /// Puts the cursor and scroll back once the window and its document
-    /// exist; a file with no saved position (or a new document) starts at the end.
+    /// exist; a file opened for the first time starts at the top, a new
+    /// document at the end.
     func restorePosition(attempt: Int = 0) {
         guard let tv = textView else { return }
         guard let url = documentURL else {
@@ -47,7 +48,7 @@ extension EditorSession {
         defer { positionReady = true }
         guard let saved = (UserDefaults.standard.dictionary(forKey: Self.key) as? [String: [Double]])?[url.path],
               saved.count >= 2 else {
-            placeCaretAtEnd()
+            placeCaretAtStart()
             return
         }
         let location = min(max(0, Int(saved[0])), tv.string.utf16.count)
@@ -60,6 +61,16 @@ extension EditorSession {
         }
         // Keep the saved scroll unless it would leave the cursor off screen.
         tv.scrollRangeToVisible(tv.selectedRange())
+        tv.scheduleCaretUpdate()
+    }
+
+    private func placeCaretAtStart() {
+        guard let tv = textView else { return }
+        tv.setSelectedRange(NSRange(location: 0, length: 0))
+        if let clip = tv.enclosingScrollView?.contentView {
+            clip.scroll(to: .zero)
+            tv.enclosingScrollView?.reflectScrolledClipView(clip)
+        }
         tv.scheduleCaretUpdate()
     }
 
