@@ -1,0 +1,55 @@
+#!/bin/sh
+# redraft: open files in Redraft from the shell.
+#
+#   redraft                 open Redraft
+#   redraft draft.md        open draft.md (created if it doesn't exist)
+#   redraft a.md b.md       open several
+#   redraft notes           same as notes.md when there's no extension
+
+BUNDLE_ID=com.brettsmith.Redraft
+
+case "$1" in
+    -h|--help)
+        sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
+        exit 0
+        ;;
+esac
+
+if [ $# -eq 0 ]; then
+    exec open -b "$BUNDLE_ID"
+fi
+
+for file in "$@"; do
+    case "$file" in
+        -*) echo "redraft: unknown option $file" >&2; exit 2 ;;
+    esac
+done
+
+paths=""
+for file in "$@"; do
+    # A bare name with no extension becomes Markdown, like `redraft notes`.
+    case "$(basename "$file")" in
+        *.*) ;;
+        *) [ -e "$file" ] || file="$file.md" ;;
+    esac
+    if [ ! -e "$file" ]; then
+        dir=$(dirname "$file")
+        if [ ! -d "$dir" ]; then
+            echo "redraft: no such folder: $dir" >&2
+            exit 1
+        fi
+        : > "$file" || exit 1
+    fi
+    if [ -d "$file" ]; then
+        echo "redraft: $file is a folder" >&2
+        exit 1
+    fi
+    paths="$paths
+$file"
+done
+
+# Hand the files to Redraft, keeping spaces in names intact.
+printf '%s\n' "$paths" | sed '/^$/d' | tr '\n' '\0' | xargs -0 open -b "$BUNDLE_ID" || {
+    echo "redraft: couldn't open Redraft. Build it once with 'make run' or install it with 'make install'." >&2
+    exit 1
+}

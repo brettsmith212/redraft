@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Redraft</title>
+    <link>https://github.com/brettsmith212/redraft</link>
+    <description>Updates for Redraft. Written by `make release`; don't edit by hand.</description>
+    <language>en</language>
+  </channel>
+</rss>
