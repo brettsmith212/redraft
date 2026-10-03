@@ -1,7 +1,7 @@
 import AppKit
 
-/// Native window tabs: ⌘T opens a new document as a tab of the front window;
-/// ⌘W (Close) closes the tab, and the window with its last tab. Redraft
+/// Native window tabs: ⌘T opens a new document as a tab of the front window,
+/// and so does opening a file (⌘O); ⌘W (Close) closes the tab, and the window with its last tab. Redraft
 /// draws its own tab strip and Show All Tabs, so the system's are never shown.
 @MainActor
 enum WindowTabs {
@@ -12,9 +12,7 @@ enum WindowTabs {
 
     static func newTab() {
         // The front document window, even while the app isn't active.
-        guard let front = NSApp.keyWindow ?? NSApp.mainWindow
-                ?? NSApp.orderedWindows.first(where: { $0.windowController?.document != nil }),
-              let host = Optional(front.sheetParent ?? front), host.windowController?.document != nil else {
+        guard let host = frontDocumentWindow else {
             // No document window in front (e.g. the welcome window): a plain new document.
             NSDocumentController.shared.newDocument(nil)
             return
@@ -28,6 +26,87 @@ enum WindowTabs {
         NSDocumentController.shared.newDocument(nil)
         EditorSession.session(for: host)?.showingTabs = false
         adopt(into: host, excluding: existing, attempt: 0)
+    }
+
+    /// The front document window, even while the app isn't active.
+    private static var frontDocumentWindow: NSWindow? {
+        guard let front = NSApp.keyWindow ?? NSApp.mainWindow
+                ?? NSApp.orderedWindows.first(where: { $0.windowController?.document != nil }) else { return nil }
+        let host = front.sheetParent ?? front
+        return host.windowController?.document != nil ? host : nil
+    }
+
+    // MARK: Opening files
+
+    /// Blank tabs already on their way out, so two files opened at once don't
+    /// both try to replace the same one.
+    private static var replacing: Set<ObjectIdentifier> = []
+
+    /// Opening a file (⌘O, Open Recent, the welcome window, `redraft file.md`)
+    /// adds it as a tab of the front window. A file that's already open just
+    /// comes to the front, and an untouched blank tab gives its place to the file.
+    private static func open(_ url: URL, display: Bool, original: (@escaping (NSDocument?, Bool, Error?) -> Void) -> Void,
+                             completion: @escaping (NSDocument?, Bool, Error?) -> Void) {
+        if let document = NSDocumentController.shared.document(for: url),
+           let window = document.windowControllers.first?.window {
+            select(window)
+            completion(document, true, nil)
+            return
+        }
+        guard display, let host = frontDocumentWindow else { return original(completion) }
+        let blank = host.windowController?.document as? NSDocument
+        let replace = blank.map { isUntouchedBlank($0) && !replacing.contains(ObjectIdentifier($0)) } ?? false
+        if replace, let blank { replacing.insert(ObjectIdentifier(blank)) }
+        let existing = Set(NSApp.windows.map(ObjectIdentifier.init))
+        pendingHost = host
+        pendingCurtain = snapshot(of: host)
+        EditorSession.session(for: host)?.showingTabs = false
+        original { document, alreadyOpen, error in
+            MainActor.assumeIsolated {
+                if document == nil {
+                    pendingHost = nil
+                    pendingCurtain = nil
+                } else {
+                    adopt(into: host, excluding: existing, attempt: 0)
+                }
+                if let blank, replace {
+                    replacing.remove(ObjectIdentifier(blank))
+                    if document != nil, isUntouchedBlank(blank) {
+                        blank.close()
+                        document?.windowControllers.first?.window?.makeKeyAndOrderFront(nil)
+                        TabsModel.shared.refresh()
+                    }
+                }
+            }
+            completion(document, alreadyOpen, error)
+        }
+    }
+
+    /// A new document nobody has typed in.
+    private static func isUntouchedBlank(_ document: NSDocument) -> Bool {
+        guard document.fileURL == nil, !document.isDocumentEdited,
+              let window = document.windowControllers.first?.window,
+              let session = EditorSession.session(for: window) else { return false }
+        return session.storage.length == 0
+    }
+
+    /// Routes the document controller's file opening through open(_:…).
+    private static func hookFileOpening() {
+        let cls: AnyClass = type(of: NSDocumentController.shared)
+        let selector = #selector(NSDocumentController.openDocument(withContentsOf:display:completionHandler:))
+        guard let method = class_getInstanceMethod(cls, selector) else { return }
+        typealias Handler = @convention(block) (NSDocument?, Bool, NSError?) -> Void
+        typealias Open = @convention(c) (NSDocumentController, Selector, NSURL, Bool, @escaping Handler) -> Void
+        let originalOpen = unsafeBitCast(method_getImplementation(method), to: Open.self)
+        let block: @convention(block) (NSDocumentController, NSURL, Bool, @escaping Handler) -> Void = { controller, url, display, handler in
+            let callOriginal: (@escaping (NSDocument?, Bool, Error?) -> Void) -> Void = { done in
+                originalOpen(controller, selector, url, display) { done($0, $1, $2) }
+            }
+            MainActor.assumeIsolated {
+                open(url as URL, display: display, original: callOriginal) { handler($0, $1, $2 as NSError?) }
+            }
+        }
+        class_replaceMethod(cls, selector, imp_implementationWithBlock(block), method_getTypeEncoding(method))
     }
 
     /// Brings a tab to the front, fading from the tab that was showing.
@@ -126,6 +205,7 @@ enum WindowTabs {
 
     /// Installed once at launch:
     /// - new tab windows join their tab group as they're first shown;
+    /// - opened files become tabs of the front window;
     /// - Show All Tabs (⇧⌘\) opens Redraft's own overview;
     /// - the system tab bar is hidden from the moment it's created, so it
     ///   never flashes. If a future macOS renames it, the only effect is that
@@ -134,6 +214,7 @@ enum WindowTabs {
         exchange(#selector(NSWindow.order(_:relativeTo:)), #selector(NSWindow.mw_order(_:relativeTo:)))
         exchange(#selector(NSWindow.toggleTabOverview(_:)), #selector(NSWindow.mw_toggleTabOverview(_:)))
         hideSystemTabBars()
+        hookFileOpening()
     }
 
     private static func exchange(_ original: Selector, _ replacement: Selector) {

@@ -266,6 +266,12 @@ enum DebugSnapshot {
                 }
             case "quit": NSApp.terminate(nil)
             case "newtab": WindowTabs.newTab()
+            case "open":
+                // open <path>: what ⌘O does once a file is chosen.
+                NSDocumentController.shared.openDocument(withContentsOf: URL(fileURLWithPath: step.dropFirst(5).description), display: true) { _, _, _ in }
+            case "type":
+                // type <text>: insert text at the caret, as typing would.
+                if let tv = EditorSession.frontmost?.textView { tv.insertText(step.dropFirst(5).description, replacementRange: tv.selectedRange()) }
             case "movetab":
                 // movetab <from> <to>: reorder tabs of the front window's group.
                 if let group = (NSApp.keyWindow ?? NSApp.mainWindow)?.tabGroup,
