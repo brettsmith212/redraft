@@ -5,5 +5,14 @@
     <link>https://github.com/brettsmith212/redraft</link>
     <description>Updates for Redraft. Written by `make release`; don't edit by hand.</description>
     <language>en</language>
+    <item>
+      <title>Redraft 0.1.0</title>
+      <pubDate>Sat, 03 Oct 2026 15:24:48 GMT</pubDate>
+      <sparkle:version>1</sparkle:version>
+      <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>First release with automatic updates.</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.0/Redraft-0.1.0.dmg" length="5848843" type="application/octet-stream" sparkle:edSignature="v8laD2vPZBVog899z4gHH7rCqDGZaxLXecqzgaindkvqI1eLVyw/bemsI0V0tBdFQosT5XRtR2fyv0xZNGk3BA=="/>
+    </item>
   </channel>
 </rss>
