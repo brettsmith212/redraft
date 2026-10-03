@@ -6,6 +6,15 @@
     <description>Updates for Redraft. Written by `make release`; don't edit by hand.</description>
     <language>en</language>
     <item>
+      <title>Redraft 0.1.2</title>
+      <pubDate>Sat, 03 Oct 2026 16:06:04 GMT</pubDate>
+      <sparkle:version>3</sparkle:version>
+      <sparkle:shortVersionString>0.1.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Keep the page still when a panel opens or closes</li><li>Release: mount the disk image with diskutil</li><li>Appcast: Redraft 0.1.1</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.2/Redraft-0.1.2.dmg" length="5861359" type="application/octet-stream" sparkle:edSignature="FFv7VeSEuSziQpce2gzdhdqfxxev4DT7XDcQ67Yyzp29PniDYx1yuPeT1y+19C+IHgk5J3GhMeEunUUmA7J4Bg=="/>
+    </item>
+    <item>
       <title>Redraft 0.1.1</title>
       <pubDate>Sat, 03 Oct 2026 15:50:32 GMT</pubDate>
       <sparkle:version>2</sparkle:version>
