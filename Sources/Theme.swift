@@ -25,6 +25,8 @@ enum Theme {
     static let inkSecondary = dynamic(light: hex(0x8A857B), dark: hex(0x8F8A80))
     static let marker = dynamic(light: hex(0x2B2A26, 0.28), dark: hex(0xE0DCD3, 0.28))
     static let ghost = dynamic(light: hex(0x2B2A26, 0.16), dark: hex(0xE0DCD3, 0.17))
+    /// Text outside the paragraph being written, in zen.
+    static let dimmed = dynamic(light: hex(0x2B2A26, 0.3), dark: hex(0xE0DCD3, 0.28))
     static let accent = dynamic(light: hex(0xA8743A), dark: hex(0xD3A468))
     static let ai = dynamic(light: hex(0x7468AE), dark: hex(0xA9A0DE))
     static let hairline = dynamic(light: hex(0x2B2A26, 0.08), dark: hex(0xE0DCD3, 0.08))
@@ -33,6 +35,7 @@ enum Theme {
     static let cutInk = dynamic(light: hex(0x2B2A26, 0.30), dark: hex(0xE0DCD3, 0.30))
     static let cutStrike = dynamic(light: hex(0xB4553F, 0.55), dark: hex(0xE07B62, 0.55))
     static let codeBackground = dynamic(light: hex(0x2B2A26, 0.05), dark: hex(0xE0DCD3, 0.06))
+    static let placeholder = dynamic(light: hex(0xB4553F, 0.15), dark: hex(0xE07B62, 0.22))
 
     /// Text zoom (⌘+ / ⌘- / ⌘0). Never saved: every launch starts at 1.
     private(set) static var zoom: CGFloat = 1
@@ -71,7 +74,21 @@ enum Theme {
         paragraph = makeParagraph(z)
         headingParagraph = makeHeadingParagraph(z)
         quoteParagraph = makeQuoteParagraph(z)
+        listParagraphs = [:]
     }
+
+    /// A list item's paragraph: wrapped lines start `indent` in, under the
+    /// item's text.
+    static func listParagraph(indent: CGFloat) -> NSParagraphStyle {
+        let indent = (indent * 2).rounded() / 2
+        if let style = listParagraphs[indent] { return style }
+        let p = paragraph.mutableCopy() as! NSMutableParagraphStyle
+        p.headIndent = indent
+        listParagraphs[indent] = p
+        return p
+    }
+
+    private static var listParagraphs: [CGFloat: NSParagraphStyle] = [:]
 
     private static func makeHeadings(_ z: CGFloat) -> [NSFont] {
         [30, 24, 20, 18].map { serif($0 * z, weight: .semibold) }

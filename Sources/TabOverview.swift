@@ -92,8 +92,8 @@ struct TabOverview: View {
             current: tab.window === window,
             highlighted: highlighted == tab.id,
             lifted: lifted,
-            open: { open(tab.window) },
-            close: { close(tab.window) },
+            open: { if let tab = tab.window { open(tab) } },
+            close: { if let tab = tab.window { close(tab) } },
             dragChanged: { dragChanged(tab.id, translation: $0) },
             dragEnded: { dragEnded() }
         )
@@ -140,7 +140,7 @@ struct TabOverview: View {
         case 123: if !ids.isEmpty { highlighted = ids[max(0, index - 1)] }       // ←
         case 124: if !ids.isEmpty { highlighted = ids[min(ids.count - 1, index + 1)] }  // →
         case 36, 76, 49:                                                        // Return, Enter, Space
-            if let tab = tabs.first(where: { $0.id == highlighted }) { open(tab.window) }
+            if let tab = tabs.first(where: { $0.id == highlighted })?.window { open(tab) }
         default: break
         }
         // Typing never reaches the page underneath.

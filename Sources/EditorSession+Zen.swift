@@ -46,16 +46,61 @@ extension EditorSession {
         guard zen == nil, let window = textView?.window else { return }
         zen = state
         // Leaving full screen another way (green button, menu) ends zen too.
-        zenObserver = NotificationCenter.default.addObserver(
+        let observer = ObserverBag()
+        observer.add(NotificationCenter.default.addObserver(
             forName: NSWindow.didExitFullScreenNotification, object: window, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.exitZen(leaveFullScreen: false) }
-        }
+        })
+        zenObserver = observer
     }
 
     private func endZen() {
-        if let zenObserver { NotificationCenter.default.removeObserver(zenObserver) }
         zenObserver = nil
         zen = nil
+    }
+
+    // MARK: Writing in zen
+
+    /// Zen dims all but the paragraph being written (Settings: zenFocus)…
+    static var zenFocus: Bool { UserDefaults.standard.object(forKey: "zenFocus") as? Bool ?? true }
+    /// …and keeps its line in the middle of the screen (zenTypewriter).
+    static var zenTypewriter: Bool { UserDefaults.standard.object(forKey: "zenTypewriter") as? Bool ?? true }
+
+    /// Turns focus and typewriter scrolling on or off to match zen and the settings.
+    func applyZenWriting() {
+        let typewriter = zen != nil && Self.zenTypewriter
+        if let tv = textView, tv.typewriter != typewriter {
+            tv.typewriter = typewriter
+            if !typewriter { tv.scrollRangeToVisible(tv.selectedRange()) }
+        }
+        updateFocus()
+    }
+
+    /// Dims everything outside the paragraph being written, by drawing it
+    /// in a fainter color (the text itself is untouched). Ghosted text keeps
+    /// its own, fainter look.
+    func updateFocus() {
+        guard let tv = textView, let lm = tv.layoutManager else { return }
+        let full = fullRange
+        guard zen != nil, Self.zenFocus, storage.length > 0 else {
+            if focusRange != nil {
+                lm.removeTemporaryAttribute(.foregroundColor, forCharacterRange: full)
+                focusRange = nil
+                tv.needsDisplay = true
+            }
+            return
+        }
+        let selection = tv.selectedRange()
+        let start = min(selection.location, storage.length)
+        let focus = string.paragraphRange(for: NSRange(location: start, length: min(selection.length, storage.length - start)))
+        lm.removeTemporaryAttribute(.foregroundColor, forCharacterRange: full)
+        lm.addTemporaryAttribute(.foregroundColor, value: Theme.dimmed, forCharacterRange: full)
+        lm.removeTemporaryAttribute(.foregroundColor, forCharacterRange: focus)
+        storage.enumerateAttribute(.ghost, in: full) { value, r, _ in
+            if value != nil { lm.removeTemporaryAttribute(.foregroundColor, forCharacterRange: r) }
+        }
+        focusRange = focus
+        tv.needsDisplay = true
     }
 }

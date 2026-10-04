@@ -2,13 +2,14 @@ import AppKit
 import SwiftUI
 
 /// Redraft's own shortcuts, in one place. Two styles:
-/// - Control (⌃⇧ + letter): for Caps-Lock-as-Control setups. Plain ⌃ keys are
+/// - Control (⌃⇧ + a letter or arrow): for Caps-Lock-as-Control setups. Plain ⌃ keys are
 ///   left alone for Vim (⌃r, ⌃d…) and macOS text editing (⌃a, ⌃e, ⌃k…).
 /// - Command: conventional Mac shortcuts.
 /// Standard Mac commands (⌘S, ⌘Z, ⌘C, ⌘,) never change.
 enum AppShortcut: CaseIterable {
     case toggleTools, alternatives, aiAlternatives, nextAlternative, previousAlternative
     case ghost, stash, overflowPanel, labPanel, preview, zen, copyClean, allTabs, shortcutsCard
+    case moveUp, moveDown
 
     enum Style: String, CaseIterable, Identifiable {
         case command, control  // the default first
@@ -36,6 +37,8 @@ enum AppShortcut: CaseIterable {
         case .copyClean: "Copy clean text"
         case .allTabs: "Show all tabs"
         case .shortcutsCard: "Keyboard shortcuts"
+        case .moveUp: "Move paragraph up"
+        case .moveDown: "Move paragraph down"
         }
     }
 
@@ -47,7 +50,7 @@ enum AppShortcut: CaseIterable {
         if self == .allTabs { return ("\\", [.command, .shift]) }
         switch style {
         case .control:
-            let letter: Character = switch self {
+            let key: KeyEquivalent = switch self {
             case .toggleTools: "e"
             case .alternatives: "a"
             case .aiAlternatives: "i"
@@ -62,15 +65,17 @@ enum AppShortcut: CaseIterable {
             case .copyClean: "c"
             case .allTabs: "\\"  // unused: always ⇧⌘\ (see binding)
             case .shortcutsCard: "/"  // unused: always ⌘/ (see binding)
+            case .moveUp: .upArrow
+            case .moveDown: .downArrow
             }
-            return (KeyEquivalent(letter), [.control, .shift])
+            return (key, [.control, .shift])
         case .command:
             switch self {
             case .toggleTools: return ("e", [.command, .shift])
             case .alternatives: return ("a", [.command, .option])
             case .aiAlternatives: return ("i", [.command, .option])
-            case .nextAlternative: return (.downArrow, [.command, .option])
-            case .previousAlternative: return (.upArrow, [.command, .option])
+            case .nextAlternative: return (.rightArrow, [.command, .option])
+            case .previousAlternative: return (.leftArrow, [.command, .option])
             case .ghost: return ("g", [.command, .option])
             case .stash: return ("s", [.command, .option])
             case .overflowPanel: return ("o", [.command, .option])
@@ -80,6 +85,8 @@ enum AppShortcut: CaseIterable {
             case .copyClean: return ("c", [.command, .shift])
             case .allTabs: return ("\\", [.command, .shift])
             case .shortcutsCard: return ("/", [.command])
+            case .moveUp: return (.upArrow, [.command, .option])
+            case .moveDown: return (.downArrow, [.command, .option])
             }
         }
     }
@@ -100,6 +107,8 @@ enum AppShortcut: CaseIterable {
         switch b.key {
         case .downArrow: text += "↓"
         case .upArrow: text += "↑"
+        case .leftArrow: text += "←"
+        case .rightArrow: text += "→"
         default: text += String(b.key.character).uppercased()
         }
         return text
@@ -142,6 +151,8 @@ extension EditorSession {
         case .copyClean: copyCleanText()
         case .allTabs: showingTabs.toggle()
         case .shortcutsCard: showShortcuts.toggle()
+        case .moveUp: moveBlock(up: true)
+        case .moveDown: moveBlock(up: false)
         }
     }
 }

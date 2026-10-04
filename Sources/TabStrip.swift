@@ -93,8 +93,8 @@ struct TabStrip: View {
                     width: widths[safe: index] ?? Self.minTabWidth,
                     window: { tab.window },
                     export: export,
-                    select: { WindowTabs.select(tab.window) },
-                    close: { tab.window.performClose(nil) },
+                    select: { if let window = tab.window { WindowTabs.select(window) } },
+                    close: { tab.window?.performClose(nil) },
                     dragChanged: { dragChanged(tab.id, index: index, dx: $0.width, tabs: tabs) },
                     dragEnded: { dragEnded(tabs: tabs) }
                 )
@@ -226,10 +226,20 @@ struct TabStrip: View {
 }
 
 struct TabInfo: Identifiable {
-    let window: NSWindow
-    var id: ObjectIdentifier { ObjectIdentifier(window) }
-    var title: String { window.title.isEmpty ? "Untitled" : window.title }
-    var fileURL: URL? { (window.windowController?.document as? NSDocument)?.fileURL }
+    let id: ObjectIdentifier
+    /// Weak: each tab's strip lists every tab of its window, so a strong
+    /// reference would keep closed tabs, and their documents, in memory.
+    weak var window: NSWindow?
+    var title: String {
+        let title = window?.title ?? ""
+        return title.isEmpty ? "Untitled" : title
+    }
+    var fileURL: URL? { (window?.windowController?.document as? NSDocument)?.fileURL }
+
+    init(window: NSWindow) {
+        id = ObjectIdentifier(window)
+        self.window = window
+    }
 }
 
 struct TabFramesKey: PreferenceKey {

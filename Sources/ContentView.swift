@@ -283,6 +283,22 @@ struct ContentView: View {
                     .pointingHandOnHover()
                     .help("This document isn't saved to a file yet. Click to choose a name and folder (⌘S).")
                 }
+                if session.placeholderCount > 0 {
+                    Button {
+                        session.goToNextPlaceholder()
+                    } label: {
+                        Text("\(session.placeholderCount) TK")
+                            .font(.system(size: 11.5, weight: .medium).monospacedDigit())
+                            .foregroundStyle(Color(nsColor: Theme.cutStrike))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(Color(nsColor: Theme.placeholder)))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .pointingHandOnHover()
+                    .help("TK placeholders still to fill in. Click to go to the next one.")
+                }
                 if let vim = session.vimStatus, !session.previewing {
                     Text(vim)
                         .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
@@ -297,7 +313,7 @@ struct ContentView: View {
                 Button {
                     session.featuresOn.toggle()
                 } label: {
-                    Text("\(session.wordCount) \(session.wordCount == 1 ? "word" : "words")")
+                    Text(countLabel)
                         .font(.system(size: 11.5, weight: .medium).monospacedDigit())
                         .foregroundStyle(session.featuresOn ? Color.accent : wordCountHovered ? Color.ink : Color.inkSecondary)
                         .padding(.horizontal, 8)
@@ -314,12 +330,30 @@ struct ContentView: View {
                 .animation(.easeOut(duration: 0.12), value: wordCountHovered)
                 .pointingHandOnHover()
                 .tourAnchor(.wordCount)
-                .help(session.featuresOn ? "Hide writing tools (\(AppShortcut.toggleTools.label))" : "Show writing tools (\(AppShortcut.toggleTools.label))")
+                .help("\(ReadingTime.label(words: session.wordCount)) · " + (session.featuresOn ? "Hide writing tools (\(AppShortcut.toggleTools.label))" : "Show writing tools (\(AppShortcut.toggleTools.label))"))
+                .contextMenu {
+                    Button("Set Length Target…") { session.editingTarget = true }
+                    if doc.target != nil {
+                        Button("Clear Length Target") { session.setTarget(nil) }
+                    }
+                }
+                .popover(isPresented: $session.editingTarget, arrowEdge: .bottom) {
+                    TargetEditor(session: session)
+                }
             }
             .fixedSize()
         }
         .padding(.horizontal, 14)
         .padding(.top, 8)
+    }
+
+    /// The word count: of the selection while there is one, and against the
+    /// length target when one is set.
+    private var countLabel: String {
+        let words = session.wordCount
+        if let selected = session.selectionWords { return "\(selected) of \(words) words" }
+        if let target = doc.target { return "\(words) / \(target) words" }
+        return "\(words) \(words == 1 ? "word" : "words")"
     }
 
     /// The writing tools, in the bottom-right corner. The last button opens
@@ -396,6 +430,52 @@ struct ContentView: View {
             .padding(.bottom, 64)
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
+    }
+}
+
+/// Sets the length target, from the word count.
+private struct TargetEditor: View {
+    @ObservedObject var session: EditorSession
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Length target")
+                .font(.system(size: 13, weight: .semibold))
+            HStack(spacing: 8) {
+                TextField("1500", text: $text)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 90)
+                    .focused($focused)
+                    .onSubmit(save)
+                Text("words").foregroundStyle(Color.inkSecondary)
+            }
+            HStack {
+                if session.doc.target != nil {
+                    Button("Clear") {
+                        session.setTarget(nil)
+                        session.editingTarget = false
+                    }
+                }
+                Spacer()
+                Button("Set", action: save)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .font(.system(size: 12.5))
+        .padding(14)
+        .frame(width: 230)
+        .onAppear {
+            text = session.doc.target.map(String.init) ?? ""
+            focused = true
+        }
+    }
+
+    private func save() {
+        let words = Int(text.filter(\.isNumber)) ?? 0
+        session.setTarget(words > 0 ? words : nil)
+        session.editingTarget = false
     }
 }
 

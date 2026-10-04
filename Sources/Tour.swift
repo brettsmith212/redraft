@@ -213,6 +213,7 @@ struct ShortcutsSheet: View {
             ("Show or hide tools", "\(AppShortcut.toggleTools.label)  or the button at the end of the tools"),
             ("Preview Markdown", AppShortcut.preview.label),
             ("Copy clean text", AppShortcut.copyClean.label),
+            ("Copy rich text (for Substack, Docs, Mail…)", "⌥⇧⌘C"),
             ("Export clean copy", "⌥⇧⌘E"),
             ("Zoom in / out / actual size", "⌘+  ⌘−  ⌘0"),
             ("New tab / close tab", "⌘T  ⌘W"),
@@ -226,6 +227,13 @@ struct ShortcutsSheet: View {
             ("Try the next / previous one", "hover + → ←  or  \(AppShortcut.nextAlternative.label) \(AppShortcut.previousAlternative.label)"),
             ("See them all", "click the dots"),
             ("In the panel", "Return adds · ?? asks AI · Delete removes"),
+        ]),
+        ("Markdown", [
+            ("Bold / italic / link", "⌘B  ⌘I  ⌘K"),
+            ("Link selected words", "paste a web address over them"),
+            ("Something to fill in later", "type TK"),
+            ("Next list item / nest it / bring it out", "Return  Tab  ⇧Tab"),
+            ("Move a paragraph, section or list item", "\(AppShortcut.moveUp.label) \(AppShortcut.moveDown.label)"),
         ]),
         ("Ghost and overflow", [
             ("Ghost or revive", "\(AppShortcut.ghost.label)  or select / right-click"),
@@ -306,7 +314,10 @@ enum PracticeDocument {
         let folder = support.appendingPathComponent("Redraft", isDirectory: true)
         try? fm.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appendingPathComponent("Practice.md")
-        try? text.write(to: url, atomically: true, encoding: .utf8)
+        // A copy that's already open keeps its changes and just comes forward.
+        if NSDocumentController.shared.document(for: url) == nil {
+            try? text.write(to: url, atomically: true, encoding: .utf8)
+        }
         NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, _ in }
     }
 
@@ -315,7 +326,7 @@ enum PracticeDocument {
 
     This page is for playing. Nothing here matters, so try everything.
 
-    Underlined words have other versions, like <span data-mw-alt="P2">alternatives</span> here and the word in the title. Hover one and press the up and down arrow keys, or click the little dots after it to open the panel. You'll hear a lower tone when you land back on the original.
+    Underlined words have other versions, like <span data-mw-alt="P2">alternatives</span> here and the word in the title. Hover one and press the left and right arrow keys, or click the little dots after it to open the panel. You'll hear a lower tone when you land back on the original.
 
     Select any sentence on this page and a small bar appears above it. <span data-mw-ghost>This sentence is ghosted: still in the file, out of your way. Select it and choose Revive to bring it back.</span> Try ghosting this one instead.
 

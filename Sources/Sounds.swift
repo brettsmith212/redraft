@@ -12,8 +12,8 @@ final class Sounds {
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
     private let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
-    private var started = false
     private var cache: [Sound: AVAudioPCMBuffer] = [:]
+    private var pauseWork: DispatchWorkItem?
 
     static var enabled: Bool {
         UserDefaults.standard.object(forKey: "soundsEnabled") as? Bool ?? true
@@ -26,12 +26,24 @@ final class Sounds {
 
     func play(_ sound: Sound) {
         guard Self.enabled, let buffer = buffer(for: sound) else { return }
-        if !started {
+        if !engine.isRunning {
             do { try engine.start() } catch { return }
-            started = true
         }
         player.scheduleBuffer(buffer, at: nil, options: .interrupts)
         if !player.isPlaying { player.play() }
+        pauseWhenQuiet()
+    }
+
+    /// A running engine keeps the audio hardware awake, so pause it a
+    /// moment after the last sound ends (it starts again on the next).
+    private func pauseWhenQuiet() {
+        pauseWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            self?.player.stop()
+            self?.engine.pause()
+        }
+        pauseWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: work)
     }
 
     #if DEBUG

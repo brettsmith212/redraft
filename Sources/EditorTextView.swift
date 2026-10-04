@@ -40,12 +40,41 @@ final class EditorTextView: NSTextView {
         let widthChanged = abs(newSize.width - frame.width) > 0.5
         if widthChanged { beginKeepingReadingPosition() }
         super.setFrameSize(newSize)
-        let side = max(40, floor((newSize.width - Theme.column) / 2))
-        if abs(textContainerInset.width - side) > 0.5 {
-            textContainerInset = NSSize(width: side, height: Theme.topInset)
+        let inset = NSSize(width: max(40, floor((newSize.width - Theme.column) / 2)), height: insetHeight)
+        if abs(textContainerInset.width - inset.width) > 0.5 || abs(textContainerInset.height - inset.height) > 0.5 {
+            textContainerInset = inset
         }
         if widthChanged { restoreReadingPosition() }
         scheduleCaretUpdate()
+    }
+
+    // MARK: Typewriter scrolling
+
+    /// Zen's typewriter scrolling: the line being written stays in the
+    /// middle of the screen.
+    var typewriter = false {
+        didSet {
+            guard oldValue != typewriter else { return }
+            setFrameSize(frame.size)
+        }
+    }
+
+    /// Room above the first line, and below the last. Typewriter scrolling
+    /// needs about half a screen, so even those lines can reach the middle.
+    private var insetHeight: CGFloat {
+        guard typewriter, let clip = enclosingScrollView?.contentView else { return Theme.topInset }
+        return max(Theme.topInset, floor(clip.bounds.height / 2 - 24))
+    }
+
+    private func keepInMiddle(_ caret: NSRect) {
+        guard let scroll = enclosingScrollView else { return }
+        // The screen may have changed size (going full screen) since the inset was set.
+        if abs(textContainerInset.height - insetHeight) > 0.5 { setFrameSize(frame.size) }
+        let clip = scroll.contentView
+        let y = min(max(0, (caret.midY - clip.bounds.height / 2).rounded()), max(0, frame.height - clip.bounds.height))
+        guard abs(clip.bounds.origin.y - y) > 0.5 else { return }
+        clip.scroll(to: NSPoint(x: clip.bounds.minX, y: y))
+        scroll.reflectScrolledClipView(clip)
     }
 
     // MARK: Reading position
@@ -58,13 +87,14 @@ final class EditorTextView: NSTextView {
     /// True while Redraft itself scrolls back, so that scroll doesn't move the anchor.
     private var restoringPosition = false
     private var keepingEnd: DispatchWorkItem?
+    private let scrollObserver = ObserverBag()
 
     func trackReadingPosition() {
         guard let clip = enclosingScrollView?.contentView else { return }
         clip.postsBoundsChangedNotifications = true
-        NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) { [weak self] _ in
+        scrollObserver.add(NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification, object: clip, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.noteReadingPosition() }
-        }
+        })
     }
 
     private func noteReadingPosition() {
@@ -214,6 +244,10 @@ final class EditorTextView: NSTextView {
     private func updateCaret() {
         updateSelectionBar()
         let selection = selectedRange()
+        if typewriter, selection.length == 0, !isDraggingSelection, window?.firstResponder === self,
+           let frame = caretFrame(at: selection.location) {
+            keepInMiddle(frame)
+        }
         let active = window?.isKeyWindow == true && window?.firstResponder === self && selection.length == 0
         guard active, let frame = caretFrame(at: selection.location) else {
             caret.isHidden = true
@@ -247,7 +281,13 @@ final class EditorTextView: NSTextView {
         guard let lm = layoutManager, let tc = textContainer, let ts = textStorage else { return nil }
         let ns = ts.string as NSString
         let length = ts.length
-        lm.ensureLayout(for: tc)
+        // Layout up to the caret is all it needs; the whole page, after every
+        // keystroke, is slow in a long document.
+        if loc < length {
+            lm.ensureLayout(forCharacterRange: NSRange(location: loc, length: 1))
+        } else {
+            lm.ensureLayout(for: tc)
+        }
 
         // The caret takes the size of the text it sits in: the character
         // before it, unless that's a line break.
@@ -336,7 +376,7 @@ final class EditorTextView: NSTextView {
         var firstLine = NSRange()
         _ = lm.lineFragmentRect(forGlyphAt: glyphs.location, effectiveRange: &firstLine)
         let top = lm.boundingRect(forGlyphRange: NSIntersectionRange(firstLine, glyphs), in: tc).offsetBy(dx: origin.x, dy: origin.y)
-        selectionBarModel.inGhost = session.ghostRun(at: selection.location) != nil
+        selectionBarModel.inGhost = session.ghostToRevive(for: selection) != nil
         let size = selectionBar.fittingSize
         let visible = visibleRect
         var x = top.midX - size.width / 2
@@ -387,7 +427,26 @@ final class EditorTextView: NSTextView {
     // MARK: Pasting
 
     override func paste(_ sender: Any?) {
+        // A web address pasted over selected words links them.
+        if let session, session.pasteLink(from: .general) { return }
         pasteAsPlainText(sender)
+    }
+
+    // MARK: Lists
+
+    override func insertNewline(_ sender: Any?) {
+        if let session, session.continueList() { return }
+        super.insertNewline(sender)
+    }
+
+    override func insertTab(_ sender: Any?) {
+        if let session, session.indentList(outdent: false) { return }
+        super.insertTab(sender)
+    }
+
+    override func insertBacktab(_ sender: Any?) {
+        if let session, session.indentList(outdent: true) { return }
+        super.insertBacktab(sender)
     }
 
     // MARK: Hover
@@ -528,12 +587,30 @@ final class EditorTextView: NSTextView {
         guard featuresOn, let session else { return }
         let origin = textContainerOrigin
         let ns = ts.string as NSString
+        let full = NSRange(location: 0, length: ts.length)
+        // Only the alternatives on screen. Finding where every one in a long
+        // document sits would lay out the whole page again after each keystroke.
+        let onScreen = lm.characterRange(
+            forGlyphRange: lm.glyphRange(forBoundingRect: visibleRect.offsetBy(dx: -origin.x, dy: -origin.y), in: tc),
+            actualGlyphRange: nil)
+        var spots: [(id: String, range: NSRange)] = []
+        ts.enumerateAttribute(.variantGroup, in: onScreen) { value, r, _ in
+            guard let id = value as? String else { return }
+            // The whole spot, though it may start above the screen or end below it.
+            var range = NSRange()
+            _ = ts.attribute(.variantGroup, at: r.location, longestEffectiveRange: &range, in: full)
+            if spots.last?.range != range { spots.append((id, range)) }
+        }
 
-        ts.enumerateAttribute(.variantGroup, in: NSRange(location: 0, length: ts.length)) { value, range, _ in
-            guard let id = value as? String, range.length > 0,
-                  let group = session.doc.groups[id], !group.options.isEmpty else { return }
+        for (id, range) in spots {
+            guard range.length > 0, let group = session.doc.groups[id], !group.options.isEmpty else { continue }
             let glyphs = lm.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-            guard glyphs.length > 0 else { return }
+            guard glyphs.length > 0 else { continue }
+            // Zen's focus dims alternatives outside the paragraph being written.
+            let dimmed = session.focusRange.map { NSIntersectionRange($0, range).length == 0 } ?? false
+            let context = NSGraphicsContext.current?.cgContext
+            if dimmed { context?.saveGState(); context?.setAlpha(0.35) }
+            defer { if dimmed { context?.restoreGState() } }
             let hovered = id == hoveredGroup
             let lastChar = NSMaxRange(range) - 1
             let lastGlyph = NSMaxRange(glyphs) - 1

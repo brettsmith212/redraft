@@ -15,6 +15,8 @@ struct SettingsView: View {
     @AppStorage("soundsEnabled") private var soundsEnabled = true
     @AppStorage(AppearanceSetting.key) private var appearance = AppearanceSetting.system.rawValue
     @AppStorage("hideMarkdownSyntax") private var hideMarkdown = true
+    @AppStorage("zenFocus") private var zenFocus = true
+    @AppStorage("zenTypewriter") private var zenTypewriter = true
     @AppStorage("shortcutStyle") private var shortcutStyle = AppShortcut.Style.command.rawValue
     @AppStorage("vimEnabled") private var vimEnabled = false
     @AppStorage("vimScreenLines") private var vimScreenLines = true
@@ -80,6 +82,12 @@ struct SettingsView: View {
                 Toggle("Hide Markdown symbols outside the line you're editing", isOn: $hideMarkdown)
                 .pointingHandOnHover()
                 Toggle("Play sounds when cycling alternatives", isOn: $soundsEnabled)
+                .pointingHandOnHover()
+                }
+                Section("Zen") {
+                Toggle("Dim everything but the paragraph you're writing", isOn: $zenFocus)
+                .pointingHandOnHover()
+                Toggle("Keep the line you're writing in the middle of the screen", isOn: $zenTypewriter)
                 .pointingHandOnHover()
                 }
                 ShellCommandSection()

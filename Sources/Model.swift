@@ -35,6 +35,8 @@ extension NSAttributedString.Key {
     static let markdownMarker = NSAttributedString.Key("mw.markdownMarker")
     /// Id of a Lab review finding. Transient.
     static let labMark = NSAttributedString.Key("mw.labMark")
+    /// A TK placeholder, still to be filled in. Display-only.
+    static let placeholder = NSAttributedString.Key("mw.placeholder")
 }
 
 /// Reads and writes the on-disk format: plain Markdown, with ghosted text and
@@ -46,6 +48,8 @@ enum MarkdownCodec {
         var version = 1
         var groups: [VariantGroup]
         var overflow: String
+        /// The length the writer is aiming for, in words. Left out when unset.
+        var target: Int?
     }
 
     static let metaOpen = "<!-- redraft"
@@ -56,16 +60,23 @@ enum MarkdownCodec {
 
     // MARK: Encoding
 
-    static func encode(storage: NSAttributedString, groups: [String: VariantGroup], overflow: String) -> String {
+    static func encode(storage: NSAttributedString, groups: [String: VariantGroup], overflow: String, target: Int? = nil) -> String {
         var out = ""
         var openGhost = false
         var openGroup: String?
         var used = Set<String>()
         let ns = storage.string as NSString
+        // Text since the last tag, escaped as a whole (styling splits it into runs).
+        var text = ""
+        func flushText() {
+            out += escaped(text, inSpan: openGhost || openGroup != nil)
+            text = ""
+        }
 
         storage.enumerateAttributes(in: NSRange(location: 0, length: storage.length)) { attrs, range, _ in
             let ghost = (attrs[.ghost] as? Bool) == true
             let group = attrs[.variantGroup] as? String
+            if ghost != openGhost || group != openGroup { flushText() }
             if ghost != openGhost {
                 if openGroup != nil { out += spanClose; openGroup = nil }
                 if openGhost { out += spanClose }
@@ -78,17 +89,18 @@ enum MarkdownCodec {
                 openGroup = group
             }
             if let group { used.insert(group) }
-            out += ns.substring(with: range)
+            text += ns.substring(with: range)
         }
+        flushText()
         if openGroup != nil { out += spanClose }
         if openGhost { out += spanClose }
 
         let keptGroups = groups.values
             .filter { used.contains($0.id) && !$0.options.isEmpty }
             .sorted { $0.id < $1.id }
-        if keptGroups.isEmpty && overflow.isEmpty { return out }
+        if keptGroups.isEmpty && overflow.isEmpty && target == nil { return out }
 
-        let meta = Metadata(groups: keptGroups, overflow: overflow)
+        let meta = Metadata(groups: keptGroups, overflow: overflow, target: target)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         guard let data = try? encoder.encode(meta) else { return out }
@@ -99,10 +111,11 @@ enum MarkdownCodec {
 
     // MARK: Decoding
 
-    static func decode(_ text: String) -> (NSAttributedString, [String: VariantGroup], String) {
+    static func decode(_ text: String) -> (NSAttributedString, [String: VariantGroup], String, Int?) {
         var body = text
         var groups: [String: VariantGroup] = [:]
         var overflow = ""
+        var target: Int?
 
         if let open = text.range(of: metaOpen, options: .backwards),
            let close = text.range(of: metaClose, range: open.upperBound..<text.endIndex),
@@ -111,6 +124,7 @@ enum MarkdownCodec {
             if let meta = try? JSONDecoder().decode(Metadata.self, from: Data(json.utf8)) {
                 groups = Dictionary(meta.groups.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
                 overflow = meta.overflow
+                target = meta.target
                 body = String(text[..<open.lowerBound])
                 if body.hasSuffix("\n\n") { body.removeLast(2) }
             }
@@ -127,7 +141,7 @@ enum MarkdownCodec {
             var attrs: [NSAttributedString.Key: Any] = [:]
             if ghost { attrs[.ghost] = true }
             if let group { attrs[.variantGroup] = group }
-            result.append(NSAttributedString(string: buffer, attributes: attrs))
+            result.append(NSAttributedString(string: unescaped(buffer, inSpan: ghost || group != nil), attributes: attrs))
             buffer = ""
         }
 
@@ -167,7 +181,53 @@ enum MarkdownCodec {
             }
             groups[id] = g
         }
-        return (result, groups, overflow)
+        return (result, groups, overflow, target)
+    }
+
+    // MARK: Escaping
+
+    // Writing that looks like Redraft's own tags would read back as tags:
+    // `<span data-mw-…` anywhere, and `</span>` inside a ghost or alternative
+    // (where it would end the span early). Such text is written as `&lt;…`.
+    // Text that already looks like that escape gets one more `amp;`, so
+    // reading undoes exactly what writing did. Other text is left alone.
+    private static let tagText = try! NSRegularExpression(pattern: "<(span data-mw-|/span>)")
+    private static let openTagText = try! NSRegularExpression(pattern: "<(span data-mw-)")
+    private static let escapedTagText = try! NSRegularExpression(pattern: "&((?:amp;)*lt;(?:span data-mw-|/span>))")
+    private static let escapedOpenTagText = try! NSRegularExpression(pattern: "&((?:amp;)*lt;span data-mw-)")
+    private static let tagEscape = try! NSRegularExpression(pattern: "&lt;(span data-mw-|/span>)")
+    private static let openTagEscape = try! NSRegularExpression(pattern: "&lt;(span data-mw-)")
+    private static let doubledEscape = try! NSRegularExpression(pattern: "&amp;((?:amp;)*lt;(?:span data-mw-|/span>))")
+    private static let doubledOpenEscape = try! NSRegularExpression(pattern: "&amp;((?:amp;)*lt;span data-mw-)")
+
+    private static func escaped(_ text: String, inSpan: Bool) -> String {
+        guard text.contains("span") else { return text }
+        let alreadyEscaped = inSpan ? escapedTagText : escapedOpenTagText
+        let tags = inSpan ? tagText : openTagText
+        return replace(tags, "&lt;$1", in: replace(alreadyEscaped, "&amp;$1", in: text))
+    }
+
+    private static func unescaped(_ text: String, inSpan: Bool) -> String {
+        guard text.contains("span") else { return text }
+        let escapes = inSpan ? tagEscape : openTagEscape
+        let doubled = inSpan ? doubledEscape : doubledOpenEscape
+        return replace(doubled, "&$1", in: replace(escapes, "<$1", in: text))
+    }
+
+    private static func replace(_ regex: NSRegularExpression, _ template: String, in text: String) -> String {
+        regex.stringByReplacingMatches(in: text, range: NSRange(location: 0, length: (text as NSString).length), withTemplate: template)
+    }
+}
+
+/// How long writing takes to read, at 238 words a minute: the average for
+/// silent reading of non-fiction (Brysbaert, 2019).
+enum ReadingTime {
+    static let wordsPerMinute = 238.0
+
+    static func label(words: Int) -> String {
+        guard words > 0 else { return "Nothing to read yet" }
+        if Double(words) < wordsPerMinute { return "Under a minute to read" }
+        return "About \(Int((Double(words) / wordsPerMinute).rounded(.up))) min read"
     }
 }
 

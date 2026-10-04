@@ -21,6 +21,14 @@ import Markdown
 ///     preview on|off
 ///     select <start> <len>  set the selection
 ///     ghost | stash         act on the selection
+///     insert <text>         type into the page
+///     undo | redo           Edit → Undo / Redo
+///     shortcut <name>       an app shortcut's command, e.g. `shortcut moveUp`
+///     menu <title>          choose a main menu item by its title
+///     watchedits <path>     log each edit to the text from then on
+///     newline | tab | backtab   Return, Tab, Shift-Tab in the page
+///     link [address] | pastelink <address>   ⌘K, or paste an address over the selection
+///     revert                reload the file from disk
 ///     dump /tmp/out.md      write what Save would write
 ///     ai <group-id>         ask AI for alternatives
 ///     trim 10|20|30|50      run a Lab trim
@@ -71,6 +79,7 @@ import Markdown
 
 enum DebugSnapshot {
     private static var sessions = NSHashTable<EditorSession>.weakObjects()
+    private static var watcher: NSObjectProtocol?
 
     @MainActor static func register(_ session: EditorSession) {
         sessions.add(session)
@@ -114,6 +123,18 @@ enum DebugSnapshot {
                 let md = session.exportMarkdown()
                 try? md.write(toFile: parts[1], atomically: true, encoding: .utf8)
                 try? MarkdownPreview.page(HTMLFormatter.format(md), title: "Test").write(toFile: parts[1] + ".html", atomically: true, encoding: .utf8)
+            case "copyrich":
+                // copyrich <path>: copy rich text to a private pasteboard and write what's on it
+                // (<path>.html, <path>.rtf, <path>.txt), leaving the real clipboard alone.
+                let board = NSPasteboard(name: NSPasteboard.Name("com.brettsmith.Redraft.debug"))
+                session.copyRichText(to: board)
+                try? board.string(forType: .html)?.write(toFile: parts[1] + ".html", atomically: true, encoding: .utf8)
+                try? board.data(forType: .rtf)?.write(to: URL(fileURLWithPath: parts[1] + ".rtf"))
+                try? board.string(forType: .string)?.write(toFile: parts[1] + ".txt", atomically: true, encoding: .utf8)
+                board.releaseGlobally()
+            case "plaintext":
+                // plaintext <path>: write what Post to X would post.
+                try? session.plainText().write(toFile: parts[1], atomically: true, encoding: .utf8)
             case "filetitle": session.debugShowFileTitle = parts[safe: 1] != "off"
             case "rename":
                 // rename <new file name>: move the document like the popover does.
@@ -151,11 +172,89 @@ enum DebugSnapshot {
             case "alternatives": session.showAlternatives = parts[safe: 1] == "on"
             case "preview": session.previewing = parts[safe: 1] == "on"
             case "select":
-                session.textView?.setSelectedRange(NSRange(location: Int(parts[1]) ?? 0, length: Int(parts[safe: 2] ?? "0") ?? 0))
+                // select <start> <len>, or `select end` for the caret at the end.
+                let start = parts[1] == "end" ? session.storage.length : Int(parts[1]) ?? 0
+                session.textView?.setSelectedRange(NSRange(location: start, length: Int(parts[safe: 2] ?? "0") ?? 0))
             case "ghost": session.toggleGhost(range: nil)
             case "stash": session.stash(range: nil)
+            case "insert":
+                // insert <text>: type into this document's page, even while Redraft isn't in front.
+                if let tv = session.textView { tv.insertText(step.dropFirst(7).description, replacementRange: tv.selectedRange()) }
+            case "shortcut":
+                // shortcut <name>: what an app shortcut does, e.g. `shortcut moveUp`.
+                if let shortcut = AppShortcut.allCases.first(where: { "\($0)" == parts[safe: 1] }) { session.perform(shortcut) }
+            case "target":
+                // target <words|none>: set or clear the length target.
+                session.setTarget(Int(parts[safe: 1] ?? ""))
+            case "counts":
+                // counts <path> <label>: append the word, selection and target counts and reading time.
+                let line = "\(parts[safe: 2] ?? ""): words=\(session.wordCount) selected=\(session.selectionWords.map(String.init) ?? "-") target=\(session.doc.target.map(String.init) ?? "-") reading=\(ReadingTime.label(words: session.wordCount))\n"
+                if let h = FileHandle(forWritingAtPath: parts[1]) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
+                else { try? line.write(toFile: parts[1], atomically: true, encoding: .utf8) }
+            case "menu":
+                // menu <title>: choose a main menu item, e.g. `menu Length Target…`.
+                let title = step.dropFirst(5).description
+                func choose(in menu: NSMenu?) -> Bool {
+                    for (i, item) in (menu?.items ?? []).enumerated() {
+                        if item.title == title { menu?.performActionForItem(at: i); return true }
+                        if choose(in: item.submenu) { return true }
+                    }
+                    return false
+                }
+                if !choose(in: NSApp.mainMenu) { NSLog("Redraft script: no menu item \(title)") }
+            case "link", "pastelink":
+                // link [address] / pastelink <address>: ⌘K, or pasting over the selection,
+                // with the address on a private pasteboard (the real clipboard is left alone).
+                let board = NSPasteboard(name: NSPasteboard.Name("com.brettsmith.Redraft.debug"))
+                board.clearContents()
+                if let address = parts[safe: 1] { board.setString(address, forType: .string) }
+                if parts[0] == "link" { session.insertLink(from: board) } else if !session.pasteLink(from: board) { NSLog("Redraft script: pasted as usual") }
+                board.releaseGlobally()
+            case "placeholders":
+                // placeholders <path> <label>: append the TK count and where each one is.
+                let line = "\(parts[safe: 2] ?? ""): count=\(session.placeholderCount) at=\(session.placeholders().map(\.location)) selection=\(session.textView?.selectedRange() ?? NSRange())\n"
+                if let h = FileHandle(forWritingAtPath: parts[1]) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
+                else { try? line.write(toFile: parts[1], atomically: true, encoding: .utf8) }
+            case "nexttk": session.goToNextPlaceholder()
+            case "zenwriting":
+                // zenwriting on|off: zen's focus and typewriter scrolling, without going full screen.
+                session.zen = parts[safe: 1] == "off" ? nil : ZenState(enteredFullScreen: false)
+            case "caretheight":
+                // caretheight <path> <label>: append where the caret sits on the screen (0 top, 1 bottom).
+                if let tv = session.textView, let clip = tv.enclosingScrollView?.contentView {
+                    let caret = tv.firstRect(forCharacterRange: tv.selectedRange(), actualRange: nil)
+                    let window = tv.window?.convertFromScreen(caret) ?? .zero
+                    let inClip = clip.convert(window, from: nil)
+                    let line = String(format: "%@: caret at %.2f of the screen, scrolled %.0f, focus %@\n", parts[safe: 2] ?? "",
+                                      (inClip.midY - clip.bounds.minY) / clip.bounds.height, clip.bounds.minY,
+                                      session.focusRange.map { NSStringFromRange($0) } ?? "none")
+                    if let h = FileHandle(forWritingAtPath: parts[1]) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
+                    else { try? line.write(toFile: parts[1], atomically: true, encoding: .utf8) }
+                }
+            case "watchedits":
+                // watchedits <path>: from now on, append each edit to the text (what and where).
+                let path = parts[1]
+                FileManager.default.createFile(atPath: path, contents: nil)
+                watcher = NotificationCenter.default.addObserver(forName: NSTextStorage.didProcessEditingNotification, object: session.storage, queue: nil) { note in
+                    guard let ts = note.object as? NSTextStorage else { return }
+                    let what = ts.editedMask.contains(.editedCharacters) ? "characters" : "attributes"
+                    let line = "\(what) \(NSStringFromRange(ts.editedRange)) change \(ts.changeInLength)\n"
+                    if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
+                }
+            case "newline": session.textView?.insertNewline(nil)
+            case "tab": session.textView?.insertTab(nil)
+            case "backtab": session.textView?.insertBacktab(nil)
+            case "undo": session.undoManager?.undo()
+            case "redo": session.undoManager?.redo()
+            case "revert":
+                // Reload the file from disk, as when another app changed it.
+                if let document = session.textView?.window?.windowController?.document as? NSDocument,
+                   let url = document.fileURL, let type = document.fileType {
+                    do { try document.revert(toContentsOf: url, ofType: type) } catch { NSLog("revert failed: \(error)") }
+                }
             case "dump":
-                let text = MarkdownCodec.encode(storage: session.doc.storage, groups: session.doc.groups, overflow: session.doc.overflow.string)
+                let text = MarkdownCodec.encode(storage: session.doc.storage, groups: session.doc.groups,
+                                                overflow: session.doc.overflow.string, target: session.doc.target)
                 try? text.write(toFile: parts[1], atomically: true, encoding: .utf8)
             case "ai": session.aiAlternatives(groupID: parts[1])
             case "trim": session.runLabTool(LabToolStore.shared.tools.first { $0.id == "trim\(parts[safe: 1] ?? "10")" } ?? LabTool.presets[2])
@@ -391,13 +490,15 @@ enum DebugSnapshot {
                 let line = "\(title): key='\(item?.keyEquivalent ?? "-")' mods=\(item?.keyEquivalentModifierMask.rawValue ?? 0) enabled=\(item?.isEnabled ?? false) key-window=\(NSApp.keyWindow?.title ?? "none")\n"
                 if let h = FileHandle(forWritingAtPath: parts[1]) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
             case "ctrlshift":
-                // ctrlshift <letter>: send ⌃⇧<letter> through the editor's keyDown.
-                if let tv = session.textView, let letter = parts[safe: 1],
+                // ctrlshift <letter|up|down>: send ⌃⇧<key> through the editor's keyDown.
+                let arrows = ["up": ("\u{F700}", UInt16(126)), "down": ("\u{F701}", UInt16(125))]
+                if let tv = session.textView, let name = parts[safe: 1],
+                   case let (letter, code) = arrows[name] ?? (name, 0),
                    let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.control, .shift],
                                                 timestamp: ProcessInfo.processInfo.systemUptime,
                                                 windowNumber: tv.window?.windowNumber ?? 0, context: nil,
                                                 characters: letter, charactersIgnoringModifiers: letter,
-                                                isARepeat: false, keyCode: 0) {
+                                                isARepeat: false, keyCode: code) {
                     tv.keyDown(with: event)
                 }
             case "state":

@@ -32,7 +32,7 @@ final class EditorSession: NSObject, ObservableObject {
         didSet {
             guard oldValue != featuresOn else { return }
             textView?.featuresOn = featuresOn
-            restyleAll()
+            restyleAlternatives()
         }
     }
     /// True while typing with the tools hidden: their button fades away
@@ -47,6 +47,12 @@ final class EditorSession: NSObject, ObservableObject {
     @Published var previewing = false
     @Published var activeGroupID: String?
     @Published var wordCount = 0
+    /// Words in the selection, while there is one.
+    @Published var selectionWords: Int?
+    /// TK placeholders still to fill in (not counting ghosted ones).
+    @Published var placeholderCount = 0
+    /// The length target's editor is open.
+    @Published var editingTarget = false
     @Published var busy: String?
     @Published var errorMessage: String?
     @Published var aiLoadingGroup: String?
@@ -72,21 +78,28 @@ final class EditorSession: NSObject, ObservableObject {
         }
         tabPictures = pictures
     }
-    @Published var zen: ZenState?
+    @Published var zen: ZenState? {
+        didSet { if (oldValue == nil) != (zen == nil) { applyZenWriting() } }
+    }
+    /// The paragraph zen keeps bright, while the rest is dimmed.
+    var focusRange: NSRange?
     @Published var showAISetup = false
-    var zenObserver: NSObjectProtocol?
-    var zoomObserver: NSObjectProtocol?
+    /// Watches for leaving full screen while in zen.
+    var zenObserver: ObserverBag?
     var positionSaveWork: DispatchWorkItem?
     /// False until the opening position is placed, so that placement isn't saved over the real one.
     var positionReady = false
-    var quitObserver: NSObjectProtocol?
     #if DEBUG
     @Published var debugShowFileTitle = false
     #endif
 
     private var isRestyling = false
     private var lastHidesMarkdown = EditorSession.hidesMarkdown
-    private var defaultsObserver: NSObjectProtocol?
+    /// Settings, zoom and quit notifications, removed when the window goes.
+    private let observers = ObserverBag()
+    /// Code fence lines at the last restyle; when an edit changes them, the
+    /// text after it moves into or out of a code block.
+    private var fenceCount = 0
     /// The paragraph the caret is in; its Markdown syntax stays visible.
     fileprivate var revealedRange = NSRange(location: NSNotFound, length: 0)
 
@@ -128,15 +141,17 @@ final class EditorSession: NSObject, ObservableObject {
         tv.featuresOn = featuresOn
         tv.layoutManager?.delegate = self
         storage.delegate = self
-        defaultsObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+        let center = NotificationCenter.default
+        observers.add(center.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.textView?.vim.settingsChanged()
+                self.applyZenWriting()
                 guard Self.hidesMarkdown != self.lastHidesMarkdown else { return }
                 self.lastHidesMarkdown = Self.hidesMarkdown
                 self.refreshMarkdownVisibility()
             }
-        }
+        })
         tv.vim.onStateChange = { [weak self, weak tv] in
             guard let self, let tv else { return }
             let status = tv.vim.statusText
@@ -147,12 +162,12 @@ final class EditorSession: NSObject, ObservableObject {
         #if DEBUG
         DebugSnapshot.register(self)
         #endif
-        zoomObserver = NotificationCenter.default.addObserver(forName: Zoom.changed, object: nil, queue: .main) { [weak self] _ in
+        observers.add(center.addObserver(forName: Zoom.changed, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.applyZoom() }
-        }
-        quitObserver = NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
+        })
+        observers.add(center.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.savePosition() }
-        }
+        })
         restyleAll()
         updateTypingAttributes()
         updateWordCount()
@@ -175,11 +190,47 @@ final class EditorSession: NSObject, ObservableObject {
         }
         pendingRestyle = nil
         guard storage.length > 0 else { return }
+        let blocks = MarkdownStyler.codeBlocks(in: string)
+        fenceCount = Self.fences(in: blocks).count
         isRestyling = true
         storage.beginEditing()
-        MarkdownStyler.apply(to: storage, in: fullRange, groups: doc.groups, showAlternates: featuresOn)
+        MarkdownStyler.apply(to: storage, in: fullRange, groups: doc.groups, showAlternates: featuresOn, codeBlocks: blocks)
         storage.endEditing()
         isRestyling = false
+    }
+
+    /// Restyles just the paragraphs holding alternatives (all of them, or
+    /// one spot's). Showing or hiding the tools, or a spot gaining or losing
+    /// an option, only changes the room left after it for its dots, so the
+    /// rest of the page needn't be styled again.
+    func restyleAlternatives(_ id: String? = nil) {
+        defer {
+            textView?.needsDisplay = true
+            textView?.scheduleCaretUpdate()
+        }
+        var paragraphs: [NSRange] = []
+        storage.enumerateAttribute(.variantGroup, in: fullRange) { value, r, _ in
+            guard let value = value as? String, id == nil || value == id else { return }
+            let paragraph = string.paragraphRange(for: r)
+            if let last = paragraphs.last, NSMaxRange(last) >= paragraph.location {
+                paragraphs[paragraphs.count - 1] = NSUnionRange(last, paragraph)
+            } else {
+                paragraphs.append(paragraph)
+            }
+        }
+        guard !paragraphs.isEmpty else { return }
+        let blocks = MarkdownStyler.codeBlocks(in: string)
+        isRestyling = true
+        storage.beginEditing()
+        for paragraph in paragraphs {
+            MarkdownStyler.restyle(storage, in: paragraph, groups: doc.groups, showAlternates: featuresOn, codeBlocks: blocks)
+        }
+        storage.endEditing()
+        isRestyling = false
+    }
+
+    private static func fences(in blocks: [MarkdownStyler.CodeBlock]) -> [NSRange] {
+        blocks.flatMap { [$0.open] + ($0.close.map { [$0] } ?? []) }
     }
 
     /// Text edited since the last restyle. Styling is applied *after* an
@@ -230,14 +281,33 @@ final class EditorSession: NSObject, ObservableObject {
             }
         }
         r = ns.paragraphRange(for: r)
-        MarkdownStyler.apply(to: ts, in: r, groups: doc.groups, showAlternates: featuresOn)
+        // Opening or closing a code block moves everything after it into or
+        // out of code, so restyle to the end.
+        let blocks = MarkdownStyler.codeBlocks(in: ns)
+        let fences = Self.fences(in: blocks)
+        if fences.count != fenceCount || fences.contains(where: { NSIntersectionRange($0, r).length > 0 }) {
+            r = NSRange(location: r.location, length: ns.length - r.location)
+        }
+        fenceCount = fences.count
+        MarkdownStyler.restyle(ts, in: r, groups: doc.groups, showAlternates: featuresOn, codeBlocks: blocks)
     }
+
+    /// Kept from the text before the caret only by the rules below, or not at all.
+    private static let notContinued: [NSAttributedString.Key] = [.variantGroup, .ghost, .markdownMarker, .placeholder, .labMark, .proposedCut, .kern]
 
     func updateTypingAttributes() {
         guard let tv = textView else { return }
         let loc = tv.selectedRange().location
         let len = storage.length
         var attrs = Theme.baseAttributes
+        // New text continues the styling before it (a heading, bold, code…),
+        // so the restyle after typing usually has nothing to change, which
+        // keeps typing fast in a long document.
+        if loc > 0, loc <= len, string.character(at: loc - 1) != 10 {
+            var styled = storage.attributes(at: loc - 1, effectiveRange: nil)
+            for key in Self.notContinued { styled[key] = nil }
+            attrs.merge(styled) { _, before in before }
+        }
         if loc > 0, loc < len {
             for key in [NSAttributedString.Key.variantGroup, .ghost] {
                 if let a = storage.attribute(key, at: loc - 1, effectiveRange: nil) as? NSObject,
@@ -280,13 +350,67 @@ final class EditorSession: NSObject, ObservableObject {
     }
 
     func updateWordCount() {
+        let count = words(in: fullRange)
+        if wordCount != count { wordCount = count }
+        let placeholders = placeholders().count
+        if placeholderCount != placeholders { placeholderCount = placeholders }
+        updateSelectionWords()
+    }
+
+    /// The TK placeholders a reader would see (ghosted ones left out), in order.
+    func placeholders() -> [NSRange] {
+        var found: [NSRange] = []
+        let ts = storage
+        storage.enumerateAttribute(.placeholder, in: fullRange) { value, r, _ in
+            if value != nil, ts.attribute(.ghost, at: r.location, effectiveRange: nil) == nil { found.append(r) }
+        }
+        return found
+    }
+
+    /// Selects the next TK after the caret, starting over at the top.
+    func goToNextPlaceholder() {
+        guard let tv = textView else { return }
+        let all = placeholders()
+        let after = NSMaxRange(tv.selectedRange())
+        guard let next = all.first(where: { $0.location >= after }) ?? all.first else { return }
+        tv.window?.makeFirstResponder(tv)
+        tv.setSelectedRange(next)
+        tv.scrollRangeToVisible(next)
+        tv.showFindIndicator(for: next)
+    }
+
+    /// Counts the selected words while there's a selection.
+    func updateSelectionWords() {
+        let selection = textView?.selectedRange() ?? NSRange(location: 0, length: 0)
+        let count = selection.length > 0 && NSMaxRange(selection) <= storage.length ? words(in: selection) : nil
+        if selectionWords != count { selectionWords = count }
+    }
+
+    /// The words a reader would read: ghosted text and Markdown syntax (a
+    /// link's address, say) aren't counted.
+    func words(in range: NSRange) -> Int {
         var count = 0
         let ns = string
-        storage.enumerateAttribute(.ghost, in: fullRange) { value, r, _ in
+        let ts = storage
+        storage.enumerateAttribute(.ghost, in: range) { value, r, _ in
             guard (value as? Bool) != true else { return }
-            ns.enumerateSubstrings(in: r, options: [.byWords, .substringNotRequired]) { _, _, _, _ in count += 1 }
+            ns.enumerateSubstrings(in: r, options: [.byWords, .substringNotRequired]) { _, word, _, _ in
+                if ts.attribute(.markdownMarker, at: word.location, effectiveRange: nil) == nil { count += 1 }
+            }
         }
-        if wordCount != count { wordCount = count }
+        return count
+    }
+
+    /// Sets (or, with nil, clears) the length target. Undoable, and saved
+    /// with the document.
+    func setTarget(_ target: Int?) {
+        let old = doc.target
+        guard target != old else { return }
+        doc.target = target
+        undoManager?.registerUndo(withTarget: self) { s in
+            MainActor.assumeIsolated { s.setTarget(old) }
+        }
+        undoManager?.setActionName(target == nil ? "Clear Length Target" : "Length Target")
     }
 
     /// The text as a reader would get it: ghosted passages left out.
@@ -484,7 +608,7 @@ final class EditorSession: NSObject, ObservableObject {
             MainActor.assumeIsolated { s.removeOption(groupID: id, optionID: option.id) }
         }
         undoManager?.setActionName("Add Alternative")
-        restyleAll()
+        restyleAlternatives(id)
     }
 
     func removeOption(groupID id: String, optionID: UUID) {
@@ -503,7 +627,7 @@ final class EditorSession: NSObject, ObservableObject {
         }
         undoManager?.endUndoGrouping()
         undoManager?.setActionName("Delete Alternative")
-        restyleAll()
+        restyleAlternatives(id)
     }
 
     private func restoreOption(groupID id: String, option: VariantOption, at index: Int) {
@@ -514,7 +638,7 @@ final class EditorSession: NSObject, ObservableObject {
         undoManager?.registerUndo(withTarget: self) { s in
             MainActor.assumeIsolated { s.removeOption(groupID: id, optionID: option.id) }
         }
-        restyleAll()
+        restyleAlternatives(id)
     }
 
     func clearAISuggestions(groupID id: String) {
@@ -529,13 +653,13 @@ final class EditorSession: NSObject, ObservableObject {
     /// Keeps the current wording and forgets the alternates.
     func dissolve(groupID id: String) {
         guard let tv = textView, let r = range(of: .variantGroup, id: id) else { return }
+        // Removing the mark is an edit, so its paragraph is restyled (dots gone) with it.
         if tv.shouldChangeText(in: r, replacementString: nil) {
             storage.removeAttribute(.variantGroup, range: r)
             tv.didChangeText()
         }
         undoManager?.setActionName("Remove Alternatives")
         if activeGroupID == id { activeGroupID = nil }
-        restyleAll()
     }
 
     // MARK: Ghost
@@ -550,10 +674,17 @@ final class EditorSession: NSObject, ObservableObject {
         return nil
     }
 
+    /// The ghosted text that Ghost / Revive would bring back for a selection:
+    /// the run the caret touches, or one the selection overlaps.
+    func ghostToRevive(for r: NSRange) -> NSRange? {
+        guard let run = ghostRun(at: r.location), r.length == 0 || NSIntersectionRange(run, r).length > 0 else { return nil }
+        return run
+    }
+
     func toggleGhost(range: NSRange?) {
         guard let tv = textView else { return }
         let r = range ?? tv.selectedRange()
-        if let run = ghostRun(at: r.location), r.length == 0 || NSIntersectionRange(run, r).length > 0 {
+        if let run = ghostToRevive(for: r) {
             revive(run)
         } else if r.length > 0 {
             ghost(r)
@@ -599,20 +730,30 @@ final class EditorSession: NSObject, ObservableObject {
     }
 
     private func appendToOverflow(_ text: String) {
-        let o = doc.overflow
-        let existing = o.string
+        let existing = doc.overflow.string
         let separator = existing.isEmpty ? "" : existing.hasSuffix("\n\n") ? "" : existing.hasSuffix("\n") ? "\n" : "\n\n"
-        let insertion = separator + text
-        let at = NSRange(location: o.length, length: 0)
-        o.replaceCharacters(in: at, with: NSAttributedString(string: insertion, attributes: Theme.overflowAttributes))
-        let added = NSRange(location: at.location, length: (insertion as NSString).length)
+        insertIntoOverflow(separator + text, at: doc.overflow.length)
+    }
+
+    /// Adds text to the overflow drawer. Undo takes it out again, and redo
+    /// puts it back, as each registers the other.
+    private func insertIntoOverflow(_ text: String, at location: Int) {
+        let o = doc.overflow
+        guard location <= o.length else { return }
+        o.replaceCharacters(in: NSRange(location: location, length: 0), with: NSAttributedString(string: text, attributes: Theme.overflowAttributes))
+        let added = NSRange(location: location, length: (text as NSString).length)
         undoManager?.registerUndo(withTarget: self) { s in
-            MainActor.assumeIsolated {
-                let o = s.doc.overflow
-                if NSMaxRange(added) <= o.length, o.attributedSubstring(from: added).string == insertion {
-                    o.replaceCharacters(in: added, with: "")
-                }
-            }
+            MainActor.assumeIsolated { s.removeFromOverflow(added, expecting: text) }
+        }
+    }
+
+    private func removeFromOverflow(_ r: NSRange, expecting text: String) {
+        let o = doc.overflow
+        // Leave the drawer alone if it has been edited since.
+        guard NSMaxRange(r) <= o.length, o.attributedSubstring(from: r).string == text else { return }
+        o.replaceCharacters(in: r, with: "")
+        undoManager?.registerUndo(withTarget: self) { s in
+            MainActor.assumeIsolated { s.insertIntoOverflow(text, at: r.location) }
         }
     }
 
@@ -646,7 +787,7 @@ final class EditorSession: NSObject, ObservableObject {
 
     func postToX() {
         var components = URLComponents(string: "https://x.com/intent/post")!
-        components.queryItems = [URLQueryItem(name: "text", value: cleanText().trimmingCharacters(in: .whitespacesAndNewlines))]
+        components.queryItems = [URLQueryItem(name: "text", value: plainText())]
         components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
         if let url = components.url { NSWorkspace.shared.open(url) }
     }
@@ -671,7 +812,7 @@ final class EditorSession: NSObject, ObservableObject {
             }
         }
 
-        if let run = ghostRun(at: loc), sel.length == 0 || NSIntersectionRange(run, sel).length > 0 {
+        if let run = ghostToRevive(for: sel.length > 0 ? sel : NSRange(location: loc, length: 0)) {
             items.append(ActionMenuItem("Revive") { [weak self] in self?.revive(run) })
         } else if sel.length > 0 {
             items.append(ActionMenuItem("Ghost It") { [weak self] in self?.ghost(sel) })
@@ -737,6 +878,7 @@ extension EditorSession: NSTextViewDelegate {
         flushRestyle()
         syncGroups()
         updateWordCount()
+        updateFocus()
         textView?.needsDisplay = true
         if !featuresOn, !typingQuietly { typingQuietly = true }
     }
@@ -746,6 +888,8 @@ extension EditorSession: NSTextViewDelegate {
         schedulePositionSave()
         updateTypingAttributes()
         updateRevealedParagraph()
+        updateSelectionWords()
+        updateFocus()
         if let id = groupID(near: tv.selectedRange().location), doc.groups[id] != nil, activeGroupID != id {
             activeGroupID = id
         }
@@ -754,6 +898,36 @@ extension EditorSession: NSTextViewDelegate {
     func undoManager(for view: NSTextView) -> UndoManager? {
         undoManager ?? view.window?.undoManager
     }
+
+    /// Smart quotes and dashes are for prose. In code, and on Markdown lines
+    /// of dashes (`---` rules and front matter, table dividers), they'd change
+    /// what the Markdown means, so there the plain characters stay.
+    func textView(
+        _ view: NSTextView,
+        didCheckTextIn range: NSRange,
+        types checkingTypes: NSTextCheckingTypes,
+        options: [NSSpellChecker.OptionKey: Any] = [:],
+        results: [NSTextCheckingResult],
+        orthography: NSOrthography,
+        wordCount: Int
+    ) -> [NSTextCheckingResult] {
+        guard view === textView else { return results }
+        let ns = string
+        return results.filter { result in
+            guard result.resultType == .dash || result.resultType == .quote else { return true }
+            // Results are placed relative to the range that was checked.
+            return !MarkdownStyler.wantsPlainPunctuation(at: range.location + result.range.location, in: ns)
+        }
+    }
+}
+
+/// Notification observers that are removed when their owner goes away.
+final class ObserverBag {
+    private var tokens: [NSObjectProtocol] = []
+
+    func add(_ token: NSObjectProtocol) { tokens.append(token) }
+
+    deinit { tokens.forEach(NotificationCenter.default.removeObserver) }
 }
 
 /// An `NSMenuItem` that runs a closure.

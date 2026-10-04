@@ -33,11 +33,14 @@ redraft draft.md    # open a file (created if it doesn't exist)
 | **AI alternatives** | Suggestions that fit the sentence, marked ✦. Type `??` in the panel for more. |
 | **Ghost** | Dims text instead of deleting it. It stays in the file but leaves the word count, preview and copied text. |
 | **Overflow** | A side drawer for spare paragraphs and notes. |
+| **TK** | Type TK (or TKTK) for anything still to fill in, as journalists do. It's highlighted, the top bar counts what's left (click the count to go to the next one), and Export Clean Copy warns while any remain. |
+| **Move** | Move the paragraph you're in up or down past the next one. On a heading it moves the whole section; on a list item, the item and its sub-items. Alternatives and ghosts go with it. |
 | **Lab** | AI editing that points things out and never rewrites: convoluted sentences, off-tone words, and trims (slight, tighten, sharper, half) shown as strike-throughs you cut or keep. Hover a tool and click its sliders icon (or right-click it) to edit its prompt; **New tool** adds your own. |
-| **Zen** | Full screen with one key; everything else works as usual. Toggle again to return to how the window was. |
-| **Markdown** | Styled as you type; the symbols hide outside the line you're editing. Preview renders it. |
+| **Zen** | Full screen with one key. The paragraph you're writing stays bright while the rest dims, and the line you're writing stays in the middle of the screen (turn either off in Settings → Editor). Everything else works as usual. Toggle again to return to how the window was. |
+| **Markdown** | Styled as you type; the symbols hide outside the line you're editing. Preview renders it. ⌘B, ⌘I and ⌘K add bold, italic and links; paste a web address over selected words to link them. In a list, Return starts the next item and Tab / ⇧Tab nest it. |
+| **Word count** | Counts what a reader will read: no ghosted text or Markdown syntax. Select text to count just that, hover for reading time (238 words a minute), and right-click it (or **Write → Length Target…**) to set a target, shown as 1240 / 1500 and saved with the document. |
 | **Vim mode** | Normal, insert, visual and visual-line modes, with your own mappings. |
-| **Export** | **File → Export Clean Copy…** saves the finished essay as a new Markdown or HTML file: current alternatives only, no ghosted text, overflow or Redraft notes. Your working file is untouched. Also: copy clean text, post to X. |
+| **Export** | **File → Export Clean Copy…** saves the finished essay as a new Markdown or HTML file: current alternatives only, no ghosted text, overflow or Redraft notes. Your working file is untouched. Also: copy clean text, copy rich text (pastes into Substack, Ghost, Google Docs or Mail with its headings, emphasis and links), post to X. |
 
 ## Shortcuts
 
@@ -48,10 +51,13 @@ Standard Mac shortcuts (⌘S, ⌘Z, ⌘C, ⌘,) work as usual. Use Caps Lock as 
 | Show / hide writing tools | ⇧⌘E, or click the word count | ⌃⇧E |
 | Alternatives for a selection (or open/close the panel) | ⌥⌘A, or right-click | ⌃⇧A |
 | AI alternatives | ⌥⌘I | ⌃⇧I |
-| Next / previous alternative | Hover the underline + → / ←, or ⌥⌘↓ / ⌥⌘↑ | ⌃⇧J / ⌃⇧K |
+| Next / previous alternative | Hover the underline + → / ←, or ⌥⌘→ / ⌥⌘← | ⌃⇧J / ⌃⇧K |
 | In the alternatives panel | Return adds · `??` asks AI · click applies · ↑ ↓ cycle · Delete removes | |
 | Ghost / revive | ⌥⌘G | ⌃⇧G |
 | Stash in overflow | ⌥⌘S | ⌃⇧S |
+| Move paragraph, section or list item up / down | ⌥⌘↑ / ⌥⌘↓ | ⌃⇧↑ / ⌃⇧↓ |
+| Bold / italic / link | ⌘B / ⌘I / ⌘K | ⌘B / ⌘I / ⌘K |
+| Next list item / nest it / bring it out | Return / Tab / ⇧Tab | |
 | Overflow / Lab | ⌥⌘O / ⌥⌘L | ⌃⇧O / ⌃⇧L |
 | Preview | ⌥⌘P | ⌃⇧P |
 | Zen mode (full screen) | ⌃⌘Z | ⌃⇧Z |
@@ -60,6 +66,7 @@ Standard Mac shortcuts (⌘S, ⌘Z, ⌘C, ⌘,) work as usual. Use Caps Lock as 
 | Show all tabs | ⇧⌘\\ or pinch in on the page | |
 | Next / previous tab | ⌃Tab / ⌃⇧Tab | |
 | Export clean copy | ⌥⇧⌘E | |
+| Copy rich text (keeps formatting when pasted) | ⌥⇧⌘C | |
 | Copy clean text | ⇧⌘C | ⌃⇧C |
 | All shortcuts | ⌘/ | ⌘/ |
 

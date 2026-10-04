@@ -15,7 +15,10 @@ struct RedraftApp: App {
 
     var body: some Scene {
         DocumentGroup(newDocument: { WriterDocument() }) { file in
+            // Reloading a file changed on disk replaces the document object;
+            // rebuild the editor for the new one, or it would keep editing the old.
             ContentView(doc: file.document, fileURL: file.fileURL)
+                .id(ObjectIdentifier(file.document))
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 980, height: 760)
@@ -87,6 +90,8 @@ struct WriterCommands: Commands {
                 Button("Export Clean Copy…") { session?.exportCleanCopy() }
                     .keyboardShortcut("e", modifiers: [.command, .option, .shift])
                 item("Copy Clean Text", .copyClean)
+                Button("Copy Rich Text") { session?.copyRichText() }
+                    .keyboardShortcut("c", modifiers: [.command, .option, .shift])
                 Button("Post to X…") { session?.postToX() }
             }
         }
@@ -108,6 +113,13 @@ struct WriterCommands: Commands {
                 item("Preview Markdown", .preview)
                 item("Zen Mode", .zen)
                 Divider()
+                Button("Bold") { session?.toggleEmphasis(bold: true) }
+                    .keyboardShortcut("b", modifiers: .command)
+                Button("Italic") { session?.toggleEmphasis(bold: false) }
+                    .keyboardShortcut("i", modifiers: .command)
+                Button("Link") { session?.insertLink() }
+                    .keyboardShortcut("k", modifiers: .command)
+                Divider()
                 item("Alternatives", .alternatives)
                 item("AI Alternatives for Selection", .aiAlternatives)
                 item("Next Alternative", .nextAlternative)
@@ -115,6 +127,11 @@ struct WriterCommands: Commands {
                 Divider()
                 item("Ghost / Revive", .ghost)
                 item("Stash in Overflow", .stash)
+                Divider()
+                item("Move Paragraph Up", .moveUp)
+                item("Move Paragraph Down", .moveDown)
+                Divider()
+                Button("Length Target…") { session?.editingTarget = true }
             }
             Divider()
             Group {
