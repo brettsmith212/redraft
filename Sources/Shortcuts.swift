@@ -54,8 +54,8 @@ enum AppShortcut: CaseIterable {
             case .toggleTools: "e"
             case .alternatives: "a"
             case .aiAlternatives: "i"
-            case .nextAlternative: "j"
-            case .previousAlternative: "k"
+            case .nextAlternative: .rightArrow
+            case .previousAlternative: .leftArrow
             case .ghost: "g"
             case .stash: "s"
             case .overflowPanel: "o"

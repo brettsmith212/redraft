@@ -490,8 +490,9 @@ enum DebugSnapshot {
                 let line = "\(title): key='\(item?.keyEquivalent ?? "-")' mods=\(item?.keyEquivalentModifierMask.rawValue ?? 0) enabled=\(item?.isEnabled ?? false) key-window=\(NSApp.keyWindow?.title ?? "none")\n"
                 if let h = FileHandle(forWritingAtPath: parts[1]) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
             case "ctrlshift":
-                // ctrlshift <letter|up|down>: send ⌃⇧<key> through the editor's keyDown.
-                let arrows = ["up": ("\u{F700}", UInt16(126)), "down": ("\u{F701}", UInt16(125))]
+                // ctrlshift <letter|up|down|left|right>: send ⌃⇧<key> through the editor's keyDown.
+                let arrows = ["up": ("\u{F700}", UInt16(126)), "down": ("\u{F701}", UInt16(125)),
+                              "left": ("\u{F702}", UInt16(123)), "right": ("\u{F703}", UInt16(124))]
                 if let tv = session.textView, let name = parts[safe: 1],
                    case let (letter, code) = arrows[name] ?? (name, 0),
                    let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.control, .shift],
