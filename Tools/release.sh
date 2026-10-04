@@ -102,7 +102,8 @@ signature=$(sed -E 's/.*edSignature="([^"]+)".*/\1/' <<<"$signed")
 length=$(sed -E 's/.*length="([0-9]+)".*/\1/' <<<"$signed")
 notes=$(mktemp)
 if [[ -n "$previous_tag" ]]; then
-    git log --format=%s "$previous_tag..HEAD" | grep -v '^Release ' > "$notes" || true
+    # Leave out this script's own commits (the version bump and the feed update).
+    git log --format=%s "$previous_tag..HEAD" | grep -vE '^(Release|Appcast:) ' > "$notes" || true
 else
     echo "First release with automatic updates." > "$notes"
 fi
