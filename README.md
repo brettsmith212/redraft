@@ -8,7 +8,7 @@ Get Redraft at [brettcsmith.com](https://brettcsmith.com). Open the `.dmg` and d
 
 Requires macOS 14 or later. Signed and notarized by Apple, and it keeps itself up to date.
 
-Optional: **Redraft → Install Shell Command…** adds a `redraft` command for opening files from a terminal:
+Optional: **Redraft → Install Shell Command…** gives you one line to paste into a terminal, which adds a `redraft` command for opening files:
 
 ```bash
 redraft draft.md    # open a file (created if it doesn't exist)
@@ -35,7 +35,7 @@ redraft draft.md    # open a file (created if it doesn't exist)
 | **Lab** | AI editing that points things out and never rewrites: convoluted sentences, off-tone words, and trims (slight, tighten, sharper, half) shown as strike-throughs you cut or keep. Hover a tool and click its sliders icon (or right-click it) to edit its prompt; **New tool** adds your own. |
 | **Zen** | Full screen with one key. The paragraph you're writing stays bright while the rest dims, and the line you're writing stays in the middle of the screen (turn either off in Settings → Editor). Everything else works as usual. Toggle again to return to how the window was. |
 | **Markdown** | Styled as you type; the symbols hide outside the line you're editing. Preview renders it. ⌘B, ⌘I and ⌘K add bold, italic and links; paste a web address over selected words to link them. In a list, Return starts the next item and Tab / ⇧Tab nest it. |
-| **Files** | ⇧⌘E lists the Markdown and text files in the folder of the document you're in, newest first. Type to filter, press Return to open one in a tab, step into a subfolder or up a level (⌘↑). It only opens files; Finder does the rest. |
+| **Files** | ⇧⌘E lists the Markdown and text files in the folder of the document you're in, newest first. Type to filter, press Return to open one in a tab, step into a subfolder or up a level (⌘↑). It only opens files; Finder does the rest. The first time in a folder, Redraft asks your permission to list it (allowing a folder covers the folders inside it). |
 | **Word count** | Counts what a reader will read: no ghosted text or Markdown syntax. Select text to count just that, hover for reading time (238 words a minute), and right-click it (or **Write → Length Target…**) to set a target, shown as 1240 / 1500 and saved with the document. |
 | **Vim mode** | Normal, insert, visual and visual-line modes, with your own mappings. |
 | **Export** | **File → Export Clean Copy…** saves the finished essay as a new Markdown or HTML file: current alternatives only, no ghosted text, overflow or Redraft notes. Your working file is untouched. Also: copy clean text, copy rich text (pastes into Substack, Ghost, Google Docs or Mail with its headings, emphasis and links), post to X. |
@@ -97,14 +97,15 @@ Redraft checks for updates about once a day. When one is ready, a small **Update
 
 - **Documents** are plain `.md` files, saved wherever you choose. New documents show **Not saved** (top bar) until you give them a name with ⌘S. Move the pointer to the top edge to see the file's name; click it for its folder, Show in Finder, Copy Path and Rename.
 - **Alternatives and ghosts** are inline `<span>` tags, so other Markdown apps show your current wording. The alternatives list and overflow sit in an HTML comment at the end of the file. Reading a Redraft file elsewhere is fine; editing it in another app can lose its alternatives, so do that in Redraft (or export a clean copy first).
-- **Settings and Lab tools** live in `~/Library/Preferences/com.brettsmith.Redraft.plist`.
+- **Settings and Lab tools** live in `~/Library/Containers/com.brettsmith.Redraft/Data/Library/Preferences/com.brettsmith.Redraft.plist`.
 
 ## Privacy
 
 Redraft has no account, analytics or tracking.
 
-- **AI features** send text to the provider you chose (OpenAI or Anthropic): the selected passage for alternatives, the whole document for the Lab. Nothing is sent until you use an AI feature. Once AI is connected, choosing Alternatives for new text is one: it sends that passage and its paragraph for suggestions.
+- **AI features** send text to the provider you chose (OpenAI or Anthropic): the selected passage for alternatives, the whole document for the Lab. Nothing is sent until you use an AI feature, and the first time Redraft asks your permission (Settings → AI can withdraw it). Once AI is connected, choosing Alternatives for new text is one: it sends that passage and its paragraph for suggestions.
 - **Keys and sign-in tokens** stay in your macOS Keychain. Documents stay where you save them.
+- **Sandboxed.** Redraft can read only the files you open and the folders you allow.
 - **Update checks** fetch a small file from GitHub about once a day, which shares only the app and macOS version. You can turn this off in Settings → Editor → Updates.
 
 ## Feedback
