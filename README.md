@@ -19,15 +19,15 @@ redraft draft.md    # open a file (created if it doesn't exist)
 1. **Write.** The page is all you see. Edits save to disk automatically within a couple of seconds.
    Quit with ⌘Q and your documents reopen where you left off; close a window and it stays closed. With nothing open, Redraft shows a welcome window with your recent files.
 2. **The writing tools** sit in the bottom-right corner. Click › at their end to tuck them away for plain writing, and the pencil to bring them back (or click the word count).
-3. **Select some text.** A small bar offers Alternatives, AI, Ghost and Stash.
+3. **Select some text.** A small bar offers Alternatives, Ghost and Stash.
 4. **Take the tour** from the Help menu, where you'll also find the practice document, every shortcut (⌘/) and Send Feedback.
 
 ## Features
 
 | Feature | What it does |
 | --- | --- |
-| **Alternatives** | Keep several versions of a word, sentence or paragraph. A wavy underline and dots mark them. Hover and press → / ← to try each one; a lower tone plays when you're back on the original. Click the dots to see them all. |
-| **AI alternatives** | Suggestions that fit the sentence, marked ✦. Click **Suggest** in the panel for more. |
+| **Alternatives** | Keep several versions of a word, sentence or paragraph. A wavy underline and dots mark them. Hover one, or put the text cursor in it, and press → / ← to try each version; a lower tone plays when you're back on the original. Click the dots to see them all. |
+| **AI suggestions** | With AI connected, choosing Alternatives for a new spot also asks for suggestions that fit the sentence, marked ✦. Click **Suggest** in the panel for more. Without AI, alternatives work the same and nothing is asked. |
 | **Ghost** | Dims text instead of deleting it. It stays in the file but leaves the word count, preview and copied text. |
 | **Overflow** | A side drawer for spare paragraphs and notes. |
 | **TK** | Type TK (or TKTK) for anything still to fill in, as journalists do. It's highlighted, the top bar counts what's left (click the count to go to the next one), and Export Clean Copy warns while any remain. |
@@ -49,9 +49,9 @@ Standard Mac shortcuts (⌘S, ⌘Z, ⌘C, ⌘,) work as usual. Use Caps Lock as 
 | Show / hide writing tools | ⇧⌘T, or click the word count | ⌃⇧T |
 | Open another file in this folder | ⇧⌘E | ⌃⇧E |
 | Alternatives for a selection (or open/close the panel) | ⌥⌘A, or right-click | ⌃⇧A |
-| AI alternatives | ⌥⌘I | ⌃⇧I |
-| Next / previous alternative | Hover the underline + → / ←, or ⌥⌘→ / ⌥⌘← | ⌃⇧→ / ⌃⇧← |
-| In the alternatives panel | Return adds · Suggest asks AI · click applies · ↑ ↓ cycle · Delete removes | |
+| Next / previous alternative | → / ← while hovering the underline or with the cursor in it, or ⌥⌘→ / ⌥⌘← | ⌃⇧→ / ⌃⇧← |
+| Move the cursor out of an alternative | Esc, then → / ← (also ↑ ↓, ⌥→ / ⌥←, ⌘→ / ⌘←, or hold the arrow) | |
+| In the alternatives panel | Return adds · Suggest asks AI for more · click applies · ↑ ↓ cycle · Delete removes | |
 | Ghost / revive | ⌥⌘G | ⌃⇧G |
 | Stash in overflow | ⌥⌘S | ⌃⇧S |
 | Move paragraph, section or list item up / down | ⌥⌘↑ / ⌥⌘↓ | ⌃⇧↑ / ⌃⇧↓ |
@@ -77,7 +77,7 @@ Supported: counts; `h j k l w b e W B E 0 ^ $ gg G { } ( ) f t F T ; ,`; `d c y`
 
 By default, line commands work on the line you see, not the whole wrapped paragraph: `j k 0 ^ $ A I D C dd cc yy V`. Turn off "Line motions follow wrapped lines" (Settings → Keyboard) for strict Vim; `gj gk g0 g^ g$` still move by screen line.
 
-Alternatives: hover an underlined word and press → / ←, or use `]a` / `[a` on the word under the cursor.
+Alternatives: hover an underlined word, or move the cursor onto it, and press → / ← (`h` / `l` still move), or use `]a` / `[a` on the word under the cursor.
 
 ## AI
 
@@ -103,7 +103,7 @@ Redraft checks for updates about once a day. When one is ready, a small **Update
 
 Redraft has no account, analytics or tracking.
 
-- **AI features** send text to the provider you chose (OpenAI or Anthropic): the selected passage for alternatives, the whole document for the Lab. Nothing is sent until you use an AI feature.
+- **AI features** send text to the provider you chose (OpenAI or Anthropic): the selected passage for alternatives, the whole document for the Lab. Nothing is sent until you use an AI feature. Once AI is connected, choosing Alternatives for new text is one: it sends that passage and its paragraph for suggestions.
 - **Keys and sign-in tokens** stay in your macOS Keychain. Documents stay where you save them.
 - **Update checks** fetch a small file from GitHub about once a day, which shares only the app and macOS version. You can turn this off in Settings → Editor → Updates.
 
