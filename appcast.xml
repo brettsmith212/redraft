@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Redraft</title>
+    <link>https://github.com/brettsmith212/redraft</link>
+    <description>Updates for Redraft. Written by `make release`; don't edit by hand.</description>
+    <language>en</language>
+    <item>
+      <title>Redraft 0.1.11</title>
+      <pubDate>Fri, 27 Nov 2026 06:29:13 GMT</pubDate>
+      <sparkle:version>12</sparkle:version>
+      <sparkle:shortVersionString>0.1.11</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Files: open another file from this folder, without leaving the page</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.11/Redraft-0.1.11.dmg" length="6361208" type="application/octet-stream" sparkle:edSignature="s8Vlr08gNWlH+0Xa1lCgHsyAr3uSZcFpeCE1o8/EedxcwiHFhYPLxx7BdF+6K9NCRRKSRFba9RbYDxaj8qptAA=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.10</title>
+      <pubDate>Fri, 27 Nov 2026 06:07:20 GMT</pubDate>
+      <sparkle:version>11</sparkle:version>
+      <sparkle:shortVersionString>0.1.10</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Changes saved by another app show up on the open page</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.10/Redraft-0.1.10.dmg" length="6202134" type="application/octet-stream" sparkle:edSignature="xV2yehDvKm5mlpuz5SWVicoRGLM7brRIEWmpy660ncrxkgwB3qJAQHkmAtMwRt03lp6hVyhMp9HJsvQPfa2QCQ=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.9</title>
+      <pubDate>Fri, 27 Nov 2026 00:41:30 GMT</pubDate>
+      <sparkle:version>10</sparkle:version>
+      <sparkle:shortVersionString>0.1.9</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Preview links open in your browser; clearer hover on every button</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.9/Redraft-0.1.9.dmg" length="6170672" type="application/octet-stream" sparkle:edSignature="IqVXiisX0sk2xmo6glM+ZizkbXv01NpzKx2JWI3EhZLTQH65HazGzc5PgZw8LL9wyUwpOzKqelO13HBdtjS6Ag=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.8</title>
+      <pubDate>Fri, 27 Nov 2026 00:08:01 GMT</pubDate>
+      <sparkle:version>9</sparkle:version>
+      <sparkle:shortVersionString>0.1.8</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Lab: a soft accent wash points out a spot; Trim summary stays current</li><li>Lab results respond to clicks, including while a check runs</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.8/Redraft-0.1.8.dmg" length="6117169" type="application/octet-stream" sparkle:edSignature="uLHdNS6RIiw8MFPvShnI3zlVl6Ehth1NX2SxtXBUf5RGjOmaUKjkIOI94NEJJKx+f4yUMqqsRnGk+2y2cMUPCg=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.7</title>
+      <pubDate>Thu, 26 Nov 2026 23:21:20 GMT</pubDate>
+      <sparkle:version>8</sparkle:version>
+      <sparkle:shortVersionString>0.1.7</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Alternatives underline starts under the text, not hidden Markdown</li><li>Alternatives: Keep this, Clear AI and Suggest buttons; Add a version field</li><li>Side panels close from their X with two or more tabs open</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.7/Redraft-0.1.7.dmg" length="6105509" type="application/octet-stream" sparkle:edSignature="0umKACTtlPhLUzc+LNq+wovWIwSywmlfptWz+XnONyRfl+DiTU91ksHMS0bw+ZsA5X1FoCYujvw4lmm2leVzDA=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.6</title>
+      <pubDate>Thu, 26 Nov 2026 04:02:49 GMT</pubDate>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>0.1.6</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Rendered links open on click; quotes keep their first-line indent</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.6/Redraft-0.1.6.dmg" length="6108413" type="application/octet-stream" sparkle:edSignature="9acT03pXtEBehnizgtc1lO3xK0WlhLFzjIVoyKHAemV46w8L6R/G16AIn5cZBvOBN3hwi6eD0hR8X1g/Xl5gBw=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.5</title>
+      <pubDate>Sun, 04 Oct 2026 20:19:34 GMT</pubDate>
+      <sparkle:version>6</sparkle:version>
+      <sparkle:shortVersionString>0.1.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Control style: next / previous alternative on ⌃⇧→ / ⌃⇧←</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.5/Redraft-0.1.5.dmg" length="6096860" type="application/octet-stream" sparkle:edSignature="uj58Ko8Lgljy/rn6MsYFmRObxew8eT+edyLxc9pCRHZRcC/FNMxwJsfqujTJZb5CfBC7V9Vq+D2C7v37a3m5AA=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.4</title>
+      <pubDate>Sun, 04 Oct 2026 05:01:00 GMT</pubDate>
+      <sparkle:version>5</sparkle:version>
+      <sparkle:shortVersionString>0.1.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Move a paragraph, a whole section (from its heading) or a list item up and down with ⌥⌘↑ and ⌥⌘↓. Next and previous alternative are now ⌥⌘→ and ⌥⌘←.</li><li>The word count shows how many words you've selected and how long the piece takes to read. Right-click it to set a length target.</li><li>Copy Rich Text (⌥⇧⌘C) pastes into Substack, Ghost, Google Docs or Mail with headings, emphasis and links intact.</li><li>⌘B, ⌘I and ⌘K for bold, italic and links. Paste a web address over selected words to link them. In a list, Return starts the next item and Tab nests it.</li><li>Type TK for anything still to fill in. It's highlighted and counted, and Export Clean Copy reminds you before it goes out.</li><li>Zen dims everything but the paragraph you're writing and keeps your line in the middle of the screen. Turn either off in Settings → Editor.</li><li>Fixes: typing after a file changes on disk is no longer lost; Redo after Stash keeps the passage; files in other encodings open correctly; smart quotes and dashes leave code and --- alone; exports keep line breaks.</li><li>Faster typing in long drafts.</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.4/Redraft-0.1.4.dmg" length="6096940" type="application/octet-stream" sparkle:edSignature="hf5TLy3iA2XyEv7U+l6ip3TimcxQe0zcI21nBB9MIVIml7VA8bdBPoBzFHw6AveSfgMOC3EDeyat9noxPXfgCA=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.3</title>
+      <pubDate>Sat, 03 Oct 2026 22:30:51 GMT</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>0.1.3</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Zen with several tabs: hide the tabs, keep them a keystroke away</li><li>Appcast: Redraft 0.1.2</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.3/Redraft-0.1.3.dmg" length="5905302" type="application/octet-stream" sparkle:edSignature="F6uHn2Q4iOS9rhCBEpuhqcuovBPJlWkHtV1PLlbNfy7TRIwOX+R0LWfxaygPp2R0dMNHRoEsKDQ0bLipgVNSCA=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.2</title>
+      <pubDate>Sat, 03 Oct 2026 16:06:04 GMT</pubDate>
+      <sparkle:version>3</sparkle:version>
+      <sparkle:shortVersionString>0.1.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Keep the page still when a panel opens or closes</li><li>Release: mount the disk image with diskutil</li><li>Appcast: Redraft 0.1.1</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.2/Redraft-0.1.2.dmg" length="5861359" type="application/octet-stream" sparkle:edSignature="FFv7VeSEuSziQpce2gzdhdqfxxev4DT7XDcQ67Yyzp29PniDYx1yuPeT1y+19C+IHgk5J3GhMeEunUUmA7J4Bg=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.1</title>
+      <pubDate>Sat, 03 Oct 2026 15:50:32 GMT</pubDate>
+      <sparkle:version>2</sparkle:version>
+      <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Open files as tabs of the front window</li><li>Open files at the top the first time</li><li>Appcast: Redraft 0.1.0</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.1/Redraft-0.1.1.dmg" length="5860932" type="application/octet-stream" sparkle:edSignature="3XJBJViu5YlVkBo0gys+Am9rQk06Yuz+lvubMK4KPjUJEbQiDaHPW/7a7KadG54YAryPozwW0ck7EiEW9ZkPAw=="/>
+    </item>
+    <item>
+      <title>Redraft 0.1.0</title>
+      <pubDate>Sat, 03 Oct 2026 15:24:48 GMT</pubDate>
+      <sparkle:version>1</sparkle:version>
+      <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>First release with automatic updates.</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.0/Redraft-0.1.0.dmg" length="5848843" type="application/octet-stream" sparkle:edSignature="v8laD2vPZBVog899z4gHH7rCqDGZaxLXecqzgaindkvqI1eLVyw/bemsI0V0tBdFQosT5XRtR2fyv0xZNGk3BA=="/>
+    </item>
+  </channel>
+</rss>
