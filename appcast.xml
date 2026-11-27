@@ -6,6 +6,15 @@
     <description>Updates for Redraft. Written by `make release`; don't edit by hand.</description>
     <language>en</language>
     <item>
+      <title>Redraft 0.1.12</title>
+      <pubDate>Fri, 27 Nov 2026 18:45:59 GMT</pubDate>
+      <sparkle:version>13</sparkle:version>
+      <sparkle:shortVersionString>0.1.12</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Alternatives ask AI on their own; ← → try versions with the cursor in one</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.12/Redraft-0.1.12.dmg" length="6372626" type="application/octet-stream" sparkle:edSignature="zHlvkglzKsOihP8XAZHiL5I8gpdoyPXg3mCJrAm6DIhvYC+XomNrWnka7WXwi6yyHDqvahmFk9RUy34WLocZAQ=="/>
+    </item>
+    <item>
       <title>Redraft 0.1.11</title>
       <pubDate>Fri, 27 Nov 2026 06:29:13 GMT</pubDate>
       <sparkle:version>12</sparkle:version>
