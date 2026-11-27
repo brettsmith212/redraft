@@ -6,6 +6,15 @@
     <description>Updates for Redraft. Written by `make release`; don't edit by hand.</description>
     <language>en</language>
     <item>
+      <title>Redraft 0.1.13</title>
+      <pubDate>Fri, 27 Nov 2026 22:58:39 GMT</pubDate>
+      <sparkle:version>14</sparkle:version>
+      <sparkle:shortVersionString>0.1.13</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<ul><li>Sandboxed: asks before listing a folder or sending text to AI; files open instantly</li></ul>]]></description>
+      <enclosure url="https://github.com/brettsmith212/redraft/releases/download/v0.1.13/Redraft-0.1.13.dmg" length="6443143" type="application/octet-stream" sparkle:edSignature="dFvjbqHYzu70+CxD5XIrs5o+VVOz3soCzu9r9BtN/xBxBLCddVYD5khTKe4eKQ7EpbUIDyWQ05gRdY5PWy84AQ=="/>
+    </item>
+    <item>
       <title>Redraft 0.1.12</title>
       <pubDate>Fri, 27 Nov 2026 18:45:59 GMT</pubDate>
       <sparkle:version>13</sparkle:version>
